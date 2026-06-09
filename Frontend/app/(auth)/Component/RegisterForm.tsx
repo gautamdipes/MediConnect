@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,8 +9,18 @@ import { useForm } from "react-hook-form";
 
 import { RegisterFormData, registerSchema } from "./schema";
 
+type RegisterResponse = {
+  success: boolean;
+  message: string;
+  data?: unknown;
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:5000";
+
 export default function SignupForm() {
   const router = useRouter();
+  const [submitError, setSubmitError] = useState("");
   const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
   const inputClass =
     "h-[48px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9]";
@@ -25,8 +36,33 @@ export default function SignupForm() {
     },
   });
 
-  const onSubmit = () => {
-    router.push("/login");
+  const onSubmit = async (formData: RegisterFormData) => {
+    setSubmitError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const result = (await response.json()) as RegisterResponse;
+
+      if (!response.ok || !result.success) {
+        setSubmitError(result.message || "Registration failed");
+        return;
+      }
+
+      router.push("/login");
+    } catch {
+      setSubmitError("Could not connect to the backend server");
+    }
   };
 
   return (
@@ -119,6 +155,11 @@ export default function SignupForm() {
         {errors.terms && (
           <p className="mt-1.5 text-[12px] text-red-500">
             {errors.terms.message}
+          </p>
+        )}
+        {submitError && (
+          <p className="mt-4 rounded-[6px] bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600">
+            {submitError}
           </p>
         )}
 

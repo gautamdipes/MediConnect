@@ -1,19 +1,86 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+type AuthResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    token: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      phone?: string;
+    };
+  };
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:5000";
+
+const setCookie = (name: string, value: string) => {
+  document.cookie = `${name}=${encodeURIComponent(
+    value
+  )}; path=/; max-age=604800; SameSite=Lax`;
+};
+
 export default function LoginForm() {
   const router = useRouter();
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
   const inputClass =
     "h-[50px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9]";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    router.push("/dashboard");
+    setSubmitError("");
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.get("email"),
+          password: formData.get("password"),
+        }),
+      });
+
+      const result = (await response.json()) as AuthResponse;
+
+      if (!response.ok || !result.success || !result.data) {
+        setSubmitError(result.message || "Login failed");
+        return;
+      }
+
+      const { token, user } = result.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("role", user.role);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setCookie("token", token);
+      setCookie("userId", user.id);
+      setCookie("role", user.role);
+
+      router.push("/dashboard");
+    } catch {
+      setSubmitError("Could not connect to the backend server");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -80,10 +147,16 @@ export default function LoginForm() {
             Remember me on this device
           </label>
         </div>
+        {submitError && (
+          <p className="mt-4 rounded-[6px] bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600">
+            {submitError}
+          </p>
+        )}
 
         <button
           type="submit"
-          className="mt-7 flex h-[54px] w-full items-center justify-center gap-2 rounded-[6px] bg-[#0057d9] text-[13px] font-semibold text-white shadow-[0_10px_18px_rgba(0,87,217,0.18)] transition hover:bg-[#0048b5]"
+          disabled={isSubmitting}
+          className="mt-7 flex h-[54px] w-full items-center justify-center gap-2 rounded-[6px] bg-[#0057d9] text-[13px] font-semibold text-white shadow-[0_10px_18px_rgba(0,87,217,0.18)] transition hover:bg-[#0048b5] disabled:opacity-60"
         >
           Sign In
         </button>
