@@ -1,46 +1,25 @@
-import type { LoginFormData, RegisterFormData } from "@/app/(auth)/Component/schema";
+import axiosInstance from "./axios-instance";
+import { API } from "./endpoints";
 
-type AuthResponse<T = unknown> = {
-  success: boolean;
-  message: string;
-  data?: T;
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
-
-async function requestAuth<T>(path: string, body: unknown): Promise<AuthResponse<T>> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    return {
-      success: false,
-      message:
-        typeof data?.message === "string"
-          ? data.message
-          : "Authentication request failed",
-    };
-  }
-
-  return {
-    success: true,
-    message: typeof data?.message === "string" ? data.message : "Success",
-    data: data?.data ?? data,
-  };
+export const register = async (data: any) => {
+    try {
+        const response =
+            await axiosInstance.post(API.AUTH.REGISTER, data); // path, data
+        return response.data; // reponse ko body
+    } catch (error: Error | any) {
+        throw new Error(error?.response?.data?.message
+            || 'Registration failed');
+        // error?.response?.data -> response ko body
+    }
 }
 
-export function register(data: RegisterFormData) {
-  return requestAuth("/auth/register", data);
-}
-
-export function login(data: LoginFormData) {
-  return requestAuth<{ token?: string; user?: unknown }>("/auth/login", data);
+export const login = async (data: any) => {
+    try {
+        const response =
+            await axiosInstance.post(API.AUTH.LOGIN, data); // path, data
+        return response.data; // reponse ko body
+    } catch (error: Error | any) {
+        throw new Error(error?.response?.data?.message
+            || 'Login failed');
+    }
 }

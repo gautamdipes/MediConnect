@@ -1,58 +1,65 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import type { SignOptions } from "jsonwebtoken";
-import { BCRYPT_SALT_ROUNDS, JWT_EXPIRES_IN, JWT_SECRET } from "../config/constant";
-import type { AuthResponseDto, LoginUserDto, RegisterUserDto } from "../dtos/user.dto";
-import { createUser, findUserByEmail } from "../repositories/user.repository";
-import type { UserDocument } from "../types/user.type";
+import { UserRepository } from "../repositories/user.repository";
+import { JWT_SECRET } from "../config/constant";
 
-const toAuthResponse = (user: UserDocument): AuthResponseDto => {
-  const token = jwt.sign(
-    { userId: user._id.toString(), role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN as SignOptions["expiresIn"] }
-  );
+const userRepository = new UserRepository();
 
-  return {
-    token,
-    user: {
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone
+export class UserService {
+  async register(data: {
+    fullName: string;
+    email: string;
+    password: string;
+    phoneNumber: string;
+  }) {
+    const existing = await userRepository.findByEmail(data.email);
+    if (existing) {
+      throw new Error("Email already registered");
     }
-  };
-};
 
-export const registerUser = async (payload: RegisterUserDto): Promise<AuthResponseDto> => {
-  const existingUser = await findUserByEmail(payload.email);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
-  if (existingUser) {
-    throw new Error("Email is already registered");
+    const user = await userRepository.createUser({
+      fullName: data.fullName,
+      email: data.email,
+      password: hashedPassword,
+      phoneNumber: data.phoneNumber,
+    });
+
+    return {
+      user: {
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+      },
+      message: "Registration successful",
+    };
   }
 
-  const hashedPassword = await bcrypt.hash(payload.password, BCRYPT_SALT_ROUNDS);
-  const user = await createUser({
-    ...payload,
-    password: hashedPassword
-  });
+  async login(data: { email: string; password: string }) {
+    const user = await userRepository.findByEmail(data.email);
+    if (!user) {
+      throw new Error("Invalid email or password");
+    }
 
-  return toAuthResponse(user);
-};
+    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    if (!isPasswordValid) {
+      throw new Error("Invalid email or password");
+    }
 
-export const loginUser = async (payload: LoginUserDto): Promise<AuthResponseDto> => {
-  const user = await findUserByEmail(payload.email, true);
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-  if (!user) {
-    throw new Error("Invalid email or password");
+    return {
+      token,
+      user: {
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+      },
+    };
   }
-
-  const isPasswordValid = await bcrypt.compare(payload.password, user.password);
-
-  if (!isPasswordValid) {
-    throw new Error("Invalid email or password");
-  }
-
-  return toAuthResponse(user);
-};
+}

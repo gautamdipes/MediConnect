@@ -1,181 +1,128 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
 import Link from "next/link";
 import { Eye } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 
-type AuthResponse = {
-  success: boolean;
-  message: string;
-  data?: {
-    token: string;
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      role: string;
-      phone?: string;
-    };
-  };
-};
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:5000";
-
-const setCookie = (name: string, value: string) => {
-  document.cookie = `${name}=${encodeURIComponent(
-    value
-  )}; path=/; max-age=604800; SameSite=Lax`;
-};
+import { loginSchema, LoginFormData } from "./schema"; 
+import { handleLoginUser } from "@/lib/actions/auth-action";
 
 export default function LoginForm() {
   const router = useRouter();
-  const [submitError, setSubmitError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
-  const inputClass =
-    "h-[50px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9]";
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitError("");
-    setIsSubmitting(true);
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-    const formData = new FormData(event.currentTarget);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.get("email"),
-          password: formData.get("password"),
-        }),
-      });
+  const onSubmit = (data: LoginFormData) => {
+    setError("");
 
-      const result = (await response.json()) as AuthResponse;
+    startTransition(async () => {
+      try {
+        const result = await handleLoginUser(data);
 
-      if (!response.ok || !result.success || !result.data) {
-        setSubmitError(result.message || "Login failed");
-        return;
+        if (result.success) {
+          router.push("/dashboard");
+        } else {
+          setError(result.message || "Login failed");
+        }
+      } catch (err: any) {
+        setError(err?.message || "Login failed");
       }
-
-      const { token, user } = result.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("userId", user.id);
-      localStorage.setItem("role", user.role);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setCookie("token", token);
-      setCookie("userId", user.id);
-      setCookie("role", user.role);
-
-      router.push("/dashboard");
-    } catch {
-      setSubmitError("Could not connect to the backend server");
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   return (
-    <div className="w-full max-w-[360px]">
-      <h2 className="text-[32px] font-bold leading-none text-[#171717]">
+    <div className="flex h-full flex-col justify-center px-14">
+      <h2 className="text-[46px] font-bold text-[#1a1a1a]">
         Login Portal
       </h2>
-      <p className="mt-2 text-[12px] text-[#6b7280]">
+
+      <p className="mt-2 text-[16px] text-gray-500">
         Enter your credentials to continue
       </p>
 
-      <form className="mt-9" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email" className={labelClass}>
-            Work Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="name@healthcare.org"
-            className={inputClass}
-          />
-        </div>
-
-        <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between">
-            <label htmlFor="password" className="text-[12px] font-semibold text-[#222]">
-              Password
-            </label>
-            <button
-              type="button"
-              className="text-[12px] font-semibold text-[#0057d9] hover:underline"
-            >
-              Forgot password?
-            </button>
+      <form
+        className="mt-12 flex flex-col gap-7"
+        onSubmit={handleSubmit(onSubmit)}
+      >
+        {/* ERROR MESSAGE */}
+        {error && (
+          <div className="rounded-md bg-red-100 px-4 py-3 text-sm text-red-600">
+            {error}
           </div>
-          <div className="relative">
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className={`${inputClass} pr-11`}
-            />
-            <Eye
-              size={15}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9ca3af]"
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-center gap-2">
-          <input
-            id="remember-me"
-            type="checkbox"
-            className="h-3.5 w-3.5 rounded border-gray-300 accent-[#0057d9]"
-          />
-          <label htmlFor="remember-me" className="text-[12px] text-[#6b7280]">
-            Remember me on this device
-          </label>
-        </div>
-        {submitError && (
-          <p className="mt-4 rounded-[6px] bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600">
-            {submitError}
-          </p>
         )}
 
+        {/* EMAIL */}
+        <div>
+          <label className="mb-3 block text-sm font-semibold">
+            Work Email
+          </label>
+
+          <input
+            type="email"
+            placeholder="name@healthcare.org"
+            {...register("email")}
+            className="h-[64px] w-full rounded-md border border-gray-300 px-5 text-lg"
+          />
+
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        {/* PASSWORD */}
+        <div>
+          <label className="mb-3 block text-sm font-semibold">
+            Password
+          </label>
+
+          <div className="relative">
+            <input
+              type="password"
+              placeholder="••••••••"
+              {...register("password")}
+              className="h-[64px] w-full rounded-md border border-gray-300 px-5 text-lg"
+            />
+
+            <Eye
+              size={18}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+          </div>
+
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
+        {/* BUTTON */}
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="mt-7 flex h-[54px] w-full items-center justify-center gap-2 rounded-[6px] bg-[#0057d9] text-[13px] font-semibold text-white shadow-[0_10px_18px_rgba(0,87,217,0.18)] transition hover:bg-[#0048b5] disabled:opacity-60"
+          disabled={isSubmitting || isPending}
+          className="h-[66px] rounded-md bg-[#0057d9] text-lg font-semibold text-white disabled:opacity-60"
         >
-          Sign In
+          {isPending ? "Signing in..." : "Sign In"}
         </button>
 
-        <div className="my-8 border-t border-[#e5e7eb]" />
-
-        <button
-          type="button"
-          className="flex h-[48px] w-full items-center justify-center gap-3 rounded-[6px] border border-[#d1d5db] bg-white text-[13px] font-semibold text-[#222] transition hover:bg-gray-50"
-        >
-          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 text-[10px] font-bold text-[#4285f4]">
-            G
-          </span>
-          Sign in with Google
-        </button>
-
-        <p className="mt-5 text-center text-[12px] text-[#6b7280]">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-[#0057d9]">
+        {/* LINK */}
+        <p className="text-center text-sm text-gray-500">
+          Don’t have an account?{" "}
+          <Link href="/signup" className="font-semibold text-[#0057d9]">
             Request Access
           </Link>
         </p>
