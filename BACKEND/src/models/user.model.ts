@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     phoneNumber: { type: String, required: true },
+    profileImage: { type: String },
   },
   { timestamps: true }
 );
