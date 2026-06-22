@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { Eye } from "lucide-react";
+import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { RegisterFormData, registerSchema } from "./schema";
+import { handleRegisterUser } from "@/lib/actions/auth-action";
 
 export default function SignupForm() {
   const router = useRouter();
   const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
   const inputClass =
     "h-[48px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9]";
+
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const {
     register,
@@ -25,8 +30,20 @@ export default function SignupForm() {
     },
   });
 
-  const onSubmit = () => {
-    router.push("/login");
+  const onSubmit = (data: RegisterFormData) => {
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await handleRegisterUser(data);
+        if (result.success) {
+          router.push("/login");
+        } else {
+          setError(result.message || "Registration failed");
+        }
+      } catch (err: any) {
+        setError(err?.message || "Registration failed");
+      }
+    });
   };
 
   return (
@@ -39,6 +56,11 @@ export default function SignupForm() {
       </p>
 
       <form className="mt-9" onSubmit={handleSubmit(onSubmit)}>
+        {error && (
+          <div className="rounded-md bg-red-50 p-3 text-xs text-red-600 border border-red-200 mb-4">
+            {error}
+          </div>
+        )}
         <div>
           <label htmlFor="fullName" className={labelClass}>
             Full Name
@@ -73,6 +95,25 @@ export default function SignupForm() {
           {errors.email && (
             <p className="mt-1.5 text-[12px] text-red-500">
               {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6">
+          <label htmlFor="phoneNumber" className={labelClass}>
+            Phone Number
+          </label>
+          <input
+            id="phoneNumber"
+            type="tel"
+            autoComplete="tel"
+            aria-invalid={Boolean(errors.phoneNumber)}
+            {...register("phoneNumber")}
+            className={inputClass}
+          />
+          {errors.phoneNumber && (
+            <p className="mt-1.5 text-[12px] text-red-500">
+              {errors.phoneNumber.message}
             </p>
           )}
         </div>
@@ -124,10 +165,10 @@ export default function SignupForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isPending}
           className="mt-7 flex h-[54px] w-full items-center justify-center rounded-[6px] bg-[#0057d9] text-[13px] font-semibold text-white shadow-[0_10px_18px_rgba(0,87,217,0.18)] transition hover:bg-[#0048b5] disabled:opacity-60"
         >
-          Create Account
+          {isPending ? "Creating Account..." : "Create Account"}
         </button>
 
         <div className="my-8 border-t border-[#e5e7eb]" />

@@ -6,12 +6,14 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/(auth)/dashboard/context/AuthContext";
 
 import { loginSchema, LoginFormData } from "./schema"; 
 import { handleLoginUser } from "@/lib/actions/auth-action";
 
 export default function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -31,7 +33,9 @@ export default function LoginForm() {
       try {
         const result = await handleLoginUser(data);
 
-        if (result.success) {
+        if (result.success && result.data) {
+          // Update auth context with token and user data
+          login(result.data.token, result.data.user);
           router.push("/dashboard");
         } else {
           setError(result.message || "Login failed");
