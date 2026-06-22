@@ -22,10 +22,8 @@ export const loginUser = async (req: Request, res: Response) => {
     const result = await userService.login(req.body);
     res.status(200).json(result);
   } catch (err: any) {
-    // Attach proper HTTP status for invalid credentials
-    err.status = 401;
-    err.message = err.message || "Invalid email or password";
-    throw err; // Let the global error handler format the response
+    // Return unauthorized for invalid credentials
+    return res.status(401).json({ message: err.message || "Invalid email or password" });
   }
 };
 
@@ -72,4 +70,10 @@ export const deleteProfileImage = async (req: Request, res: Response) => {
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }
+};
+
+// Global error handling middleware
+export const errorHandler = (err: any, req: Request, res: Response, next: any) => {
+  console.error(err);
+  res.status(500).json({ message: err.message || 'Internal Server Error' });
 };

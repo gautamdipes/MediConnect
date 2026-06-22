@@ -72,6 +72,7 @@ export class UserService {
     return {
       token,
       user: {
+        _id: user._id,
         fullName: user.fullName,
         email: user.email,
         phoneNumber: user.phoneNumber,
