@@ -10,6 +10,16 @@ export const api: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
+// Attach Authorization header from localStorage to every request if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
 /**
  * Set the Authorization header for the shared `api` instance.
  * Call this once after you obtain the JWT token (e.g. after login or from

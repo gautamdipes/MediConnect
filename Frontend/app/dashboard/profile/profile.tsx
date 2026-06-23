@@ -4,250 +4,378 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Bell, Heart, Droplet, MessageSquare, Camera } from "lucide-react";
+import { 
+  Bell, 
+  Settings, 
+  Search, 
+  Camera, 
+  Pencil, 
+  Info, 
+  Lock, 
+  Eye, 
+  Calendar as CalendarIcon 
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import type { User } from "../context/AuthContext";
 import { apiRequest } from "@/lib/proxy";
 
 const profileSchema = z.object({
-    fullName: z.string().min(2, "Full name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(7, "Phone number is invalid"),
-    dob: z.string().min(1, "Date of birth is required"),
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(7, "Phone number is invalid"),
+  dob: z.string().min(1, "Date of birth is required"),
+  address: z.string().optional(),
+  gender: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
+const passwordSchema = z.object({
+  oldPassword: z.string().min(6, "Too short"),
+  newPassword: z.string().min(6, "Too short"),
+  confirmPassword: z.string().min(6, "Too short"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match",
+});
+
+type PasswordFormData = z.infer<typeof passwordSchema>;
+
 export default function ProfilePage() {
-    const { user, setUser } = useAuth();
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const { user, setUser } = useAuth();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
-    const inputClass = "h-[48px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9] aria-invalid:border-red-500";
+  // Profile Form
+  const {
+    register: registerProfile,
+    handleSubmit: handleSubmitProfile,
+    reset: resetProfile,
+    formState: { errors: profileErrors, isSubmitting: isSubmittingProfile },
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      phone: "",
+      dob: "",
+      address: "123 Wellness Avenue, Apt 4B, Medical District, NY 10001",
+      gender: "Female"
+    },
+  });
 
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors, isSubmitting },
-    } = useForm<ProfileFormData>({
-        resolver: zodResolver(profileSchema),
-        defaultValues: {
-            fullName: "",
-            email: "",
-            phone: "",
-            dob: "",
-        },
-    });
+  // Password Form
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPassword,
+    reset: resetPassword,
+    formState: { errors: passwordErrors, isSubmitting: isSubmittingPassword },
+  } = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+  });
 
-    // Populate/reset form defaults when user data changes
-    useEffect(() => {
-        if (user) {
-            reset({
-                fullName: user.fullName || "",
-                email: user.email || "",
-                phone: user.phoneNumber || "",
-                dob: user.dob ? user.dob.split("T")[0] : "",
-            });
-        }
-    }, [user, reset]);
+  // Populate/reset form defaults when user data changes
+  useEffect(() => {
+    if (user) {
+      resetProfile({
+        fullName: user.fullName || "Sarah Jenkins",
+        email: user.email || "sarah.jenkins@example.com",
+        phone: user.phoneNumber || "+1 (555) 123-4567",
+        dob: user.dob ? user.dob.split("T")[0] : "1985-06-15",
+        address: "123 Wellness Avenue, Apt 4B, Medical District, NY 10001",
+        gender: "Female"
+      });
+    }
+  }, [user, resetProfile]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
-        }
-    };
+  // Fetch the latest user data (including profileImage) on mount
+  useEffect(() => {
+    apiRequest({ method: "get", url: "/v1/auth/whoami" })
+      .then((data: { user: User }) => {
+        setUser(data.user);
+      })
+      .catch((err: unknown) => console.error("whoami error", err));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const onSubmit = async (data: ProfileFormData) => {
-        try {
-            setUpdateMessage(null);
-            const formData = new FormData();
-            formData.append("fullName", data.fullName);
-            formData.append("phone", data.phone);
-            formData.append("dob", data.dob);
-            if (selectedFile) {
-                formData.append("file", selectedFile);
-            }
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
 
-            const res = await apiRequest({
-                method: "post",
-                url: "/v1/auth/update",
-                data: formData,
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
+  const onSubmitProfile = async (data: ProfileFormData) => {
+    try {
+      setUpdateMessage(null);
+      const formData = new FormData();
+      formData.append("fullName", data.fullName);
+      formData.append("phone", data.phone);
+      formData.append("dob", data.dob);
+      if (selectedFile) {
+        formData.append("file", selectedFile);
+      }
 
-            if (res.user) {
-                setUser(res.user);
-            }
-            setUpdateMessage({ type: "success", text: "Profile updated successfully!" });
-        } catch (err: any) {
-            console.error(err);
-            setUpdateMessage({ type: "error", text: err.message || "Failed to update profile." });
-        }
-    };
+      const res = await apiRequest({
+        method: "post",
+        url: "/v1/auth/update",
+        data: formData,
+      });
 
-    const profilePicSrc = imagePreview || (user?.profileImage ? `http://localhost:5000${user.profileImage}` : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150");
+      if (res.user) setUser(res.user);
+      // Clear file selection so the server-side image is shown
+      setSelectedFile(null);
+      setImagePreview(null);
+      setUpdateMessage({ type: "success", text: "Profile updated successfully!" });
+    } catch (err: any) {
+      setUpdateMessage({ type: "error", text: err.message || "Failed to update profile." });
+    }
+  };
 
-    return (
-        <>
-            <header className="flex justify-between items-start mb-9">
-                <div>
-                    <h2 className="text-[26px] font-bold tracking-tight text-[#171717]">My Profile</h2>
-                    <p className="text-[13px] text-[#6b7280] mt-1">Manage your personal settings and health credentials</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button type="button" className="p-2 text-[#9ca3af] hover:text-[#4b5563] bg-white rounded-full border border-[#e5e7eb] shadow-sm relative">
-                        <Bell size={18} />
-                    </button>
-                    <div className="w-10 h-10 rounded-full border border-gray-200 shadow-sm overflow-hidden bg-gray-100">
-                        <img src={profilePicSrc} alt="User Profile" className="w-full h-full object-cover" />
-                    </div>
-                </div>
-            </header>
+  const onSubmitPassword = async (data: PasswordFormData) => {
+    try {
+      setPasswordMessage(null);
+      await apiRequest({
+        method: "put",
+        url: "/v1/auth/password",
+        data: { oldPassword: data.oldPassword, newPassword: data.newPassword },
+      });
+      resetPassword();
+      setPasswordMessage({ type: "success", text: "Password updated successfully!" });
+    } catch (err: any) {
+      setPasswordMessage({ type: "error", text: err.message || "Failed to update password." });
+    }
+  };
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white rounded-[12px] border border-[#e5e7eb] p-6 shadow-sm">
-                    <h3 className="text-[16px] font-bold text-[#171717] mb-6">Personal Information</h3>
+  // Use the Next.js proxy for uploaded images so we don't need a direct backend URL
+  const profilePicSrc = imagePreview
+    || (user?.profileImage ? user.profileImage : null)
+    || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=300";
 
-                    <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-                        {/* Profile Image Upload */}
-                        <div className="flex items-center gap-5 pb-6 border-b border-[#e5e7eb]">
-                            <div className="relative w-20 h-20 rounded-full border border-gray-200 shadow-sm overflow-hidden bg-gray-100 group">
-                                <img src={profilePicSrc} alt="User Profile Preview" className="w-full h-full object-cover" />
-                                <label htmlFor="profileImageInput" className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
-                                    <Camera size={18} />
-                                </label>
-                            </div>
-                            <div>
-                                <h4 className="text-[14px] font-bold text-[#171717]">Profile Picture</h4>
-                                <p className="text-[12px] text-[#6b7280] mt-1 mb-2.5">Upload a new avatar (JPG, PNG, GIF up to 5MB)</p>
-                                <input
-                                    id="profileImageInput"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => document.getElementById('profileImageInput')?.click()}
-                                    className="h-[32px] px-3 rounded-[6px] border border-[#d1d5db] bg-white text-[12px] font-semibold text-[#374151] shadow-sm transition hover:bg-gray-50"
-                                >
-                                    Choose Image
-                                </button>
-                            </div>
-                        </div>
+  const inputClass = "w-full rounded-lg border border-gray-300 px-4 py-2.5 text-[14px] text-gray-900 outline-none transition focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9] placeholder:text-gray-400";
+  const labelClass = "block text-[13px] font-bold text-gray-700 mb-2";
 
-                        {updateMessage && (
-                            <div className={`p-4 rounded-[6px] text-[13px] ${updateMessage.type === "success" ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
-                                {updateMessage.text}
-                            </div>
-                        )}
+  return (
+    <div className="flex flex-col h-full bg-[#fcfcfc]">
+      {/* Top Navbar */}
+      <header className="h-[72px] bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0">
+        <div className="relative w-96">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input 
+            type="text" 
+            placeholder="Search..." 
+            className="w-full h-10 pl-11 pr-4 bg-white border border-gray-300 rounded-full text-sm outline-none focus:border-[#0057d9]"
+          />
+        </div>
+        <div className="flex items-center gap-5">
+          <button className="text-gray-600 hover:text-gray-900 transition-colors">
+            <Bell size={22} strokeWidth={2} />
+          </button>
+          <button className="text-gray-600 hover:text-gray-900 transition-colors">
+            <Settings size={22} strokeWidth={2} />
+          </button>
+          <div className="w-9 h-9 rounded-full border border-gray-200 overflow-hidden ml-2">
+            <img src={profilePicSrc} alt="Avatar" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </header>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="fullName" className={labelClass}>Full Name</label>
-                                <input
-                                    id="fullName"
-                                    type="text"
-                                    aria-invalid={Boolean(errors.fullName)}
-                                    {...register("fullName")}
-                                    className={inputClass}
-                                />
-                                {errors.fullName && (
-                                    <p className="mt-1.5 text-[12px] text-red-500">{errors.fullName.message}</p>
-                                )}
-                            </div>
-                            <div>
-                                <label htmlFor="email" className={labelClass}>Email Address</label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    disabled
-                                    aria-invalid={Boolean(errors.email)}
-                                    {...register("email")}
-                                    className={`${inputClass} bg-gray-50 cursor-not-allowed`}
-                                />
-                                {errors.email && (
-                                    <p className="mt-1.5 text-[12px] text-red-500">{errors.email.message}</p>
-                                )}
-                            </div>
-                        </div>
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto p-8 max-w-[1200px] mx-auto w-full">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+          <p className="text-gray-500 mt-2 text-[15px]">
+            Manage your personal information, security preferences, and account settings.
+          </p>
+        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="phone" className={labelClass}>Phone Number</label>
-                                <input
-                                    id="phone"
-                                    type="tel"
-                                    aria-invalid={Boolean(errors.phone)}
-                                    {...register("phone")}
-                                    className={inputClass}
-                                />
-                                {errors.phone && (
-                                    <p className="mt-1.5 text-[12px] text-red-500">{errors.phone.message}</p>
-                                )}
-                            </div>
-                            <div>
-                                <label htmlFor="dob" className={labelClass}>Date of Birth</label>
-                                <input
-                                    id="dob"
-                                    type="date"
-                                    aria-invalid={Boolean(errors.dob)}
-                                    {...register("dob")}
-                                    className={inputClass}
-                                />
-                                {errors.dob && (
-                                    <p className="mt-1.5 text-[12px] text-red-500">{errors.dob.message}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-4 border-t border-[#e5e7eb]">
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="h-[44px] px-6 rounded-[6px] bg-[#0057d9] text-[13px] font-semibold text-white shadow-sm transition hover:bg-[#0048b5] disabled:opacity-60"
-                            >
-                                {isSubmitting ? "Saving..." : "Save Changes"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Sidebar Summary Panels */}
-                <div className="space-y-4">
-                    <div className="bg-white p-5 rounded-[12px] border border-[#e5e7eb] shadow-sm">
-                        <h3 className="text-[15px] font-bold text-[#171717] mb-4">Health Vitals Summary</h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 bg-rose-50/50 rounded-[8px]">
-                                <div className="flex items-center gap-2.5 text-rose-600">
-                                    <Heart size={16} fill="currentColor" />
-                                    <span className="text-[13px] font-semibold text-[#374151]">Pulse Rate</span>
-                                </div>
-                                <span className="text-[13px] font-bold text-[#171717]">72 bpm</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-teal-50/50 rounded-[8px]">
-                                <div className="flex items-center gap-2.5 text-teal-600">
-                                    <Droplet size={16} />
-                                    <span className="text-[13px] font-semibold text-[#374151]">Blood Pressure</span>
-                                </div>
-                                <span className="text-[13px] font-bold text-[#171717]">120/80</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          
+          {/* Left Column - Profile Card */}
+          <div className="w-full lg:w-[320px] bg-white rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col items-center shrink-0">
+            <div className="relative mb-6">
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
+                <img src={profilePicSrc} alt="Profile" className="w-full h-full object-cover" />
+              </div>
+              <label 
+                htmlFor="avatar-upload" 
+                className="absolute bottom-1 right-1 w-8 h-8 bg-[#0057d9] text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white shadow-sm hover:bg-blue-700 transition"
+              >
+                <Camera size={16} />
+              </label>
+              <input 
+                id="avatar-upload" 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleImageChange}
+              />
+            </div>
+            
+            <div className="text-center mb-6 w-full">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <h2 className="text-xl font-bold text-gray-900">{user?.fullName || "Sarah Jenkins"}</h2>
+                <span className="bg-[#0057d9] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide">
+                  PREMIUM PATIENT
+                </span>
+              </div>
+              <p className="text-gray-500 text-[14px]">{user?.email || "sarah.jenkins@example.com"}</p>
             </div>
 
-            <button type="button" className="fixed bottom-6 right-6 w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-teal-700 transition z-50">
-                <MessageSquare size={20} />
-            </button>
-        </>
-    );
+            <div className="w-full flex flex-col gap-3 mb-6">
+              <button 
+                className="w-full py-2.5 border border-gray-300 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+              >
+                Upload New Photo
+              </button>
+              <button className="w-full py-2.5 text-[14px] font-bold text-red-600 hover:bg-red-50 rounded-lg transition">
+                Remove
+              </button>
+            </div>
+
+            <div className="w-full border-t border-gray-200 pt-6">
+              <button className="flex items-center justify-center gap-2 w-full py-2.5 text-[14px] font-bold text-[#0057d9] hover:bg-blue-50 rounded-lg transition">
+                <Pencil size={16} /> Edit Profile
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column - Forms */}
+          <div className="flex-1 w-full flex flex-col gap-8">
+            
+            {/* Personal Information */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-8 py-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-[13px] font-bold text-gray-500 tracking-widest">PERSONAL INFORMATION</h3>
+                <Info size={20} className="text-gray-400" />
+              </div>
+              
+              <div className="p-8">
+                {updateMessage && (
+                  <div className={`mb-6 p-4 rounded-lg text-sm font-semibold ${updateMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {updateMessage.text}
+                  </div>
+                )}
+                
+                <form onSubmit={handleSubmitProfile(onSubmitProfile)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className={labelClass}>Full Name</label>
+                      <input type="text" {...registerProfile("fullName")} className={inputClass} />
+                      {profileErrors.fullName && <p className="text-red-500 text-xs mt-1">{profileErrors.fullName.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Email Address</label>
+                      <input type="email" {...registerProfile("email")} disabled className={`${inputClass} bg-gray-50 text-gray-500 cursor-not-allowed`} />
+                      {profileErrors.email && <p className="text-red-500 text-xs mt-1">{profileErrors.email.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Phone Number</label>
+                      <input type="tel" {...registerProfile("phone")} className={inputClass} />
+                      {profileErrors.phone && <p className="text-red-500 text-xs mt-1">{profileErrors.phone.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Date of Birth</label>
+                      <div className="relative">
+                        <input type="date" {...registerProfile("dob")} className={`${inputClass} [&::-webkit-calendar-picker-indicator]:opacity-0`} />
+                        <CalendarIcon size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      </div>
+                      {profileErrors.dob && <p className="text-red-500 text-xs mt-1">{profileErrors.dob.message}</p>}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Home Address</label>
+                      <input type="text" {...registerProfile("address")} className={inputClass} />
+                    </div>
+                    <div className="md:col-span-1">
+                      <label className={labelClass}>Gender</label>
+                      <select {...registerProfile("gender")} className={`${inputClass} appearance-none`}>
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200 -mx-8 px-8 -mb-8 pb-6 bg-gray-50/50">
+                    <button type="button" className="text-[14px] font-bold text-gray-700 hover:text-gray-900 px-4 py-2.5">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isSubmittingProfile} className="bg-[#0057d9] text-white px-6 py-2.5 rounded-lg text-[14px] font-bold hover:bg-blue-700 transition disabled:opacity-70">
+                      {isSubmittingProfile ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Security Settings */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+              <div className="px-8 py-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-[13px] font-bold text-gray-500 tracking-widest">SECURITY SETTINGS</h3>
+                <Lock size={20} className="text-gray-400" />
+              </div>
+              
+              <div className="p-8">
+                {passwordMessage && (
+                  <div className={`mb-6 p-4 rounded-lg text-sm font-semibold ${passwordMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    {passwordMessage.text}
+                  </div>
+                )}
+                
+                <form onSubmit={handleSubmitPassword(onSubmitPassword)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="md:col-span-2 md:w-1/2 pr-3">
+                      <label className={labelClass}>Current Password</label>
+                      <div className="relative">
+                        <input type="password" placeholder="••••••••" {...registerPassword("oldPassword")} className={inputClass} />
+                        <Eye size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                      </div>
+                      {passwordErrors.oldPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.oldPassword.message}</p>}
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>New Password</label>
+                      <div className="relative">
+                        <input type="password" {...registerPassword("newPassword")} className={inputClass} />
+                        <Eye size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                      </div>
+                      {passwordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.newPassword.message}</p>}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">PASSWORD STRENGTH</span>
+                        <span className="text-[10px] font-bold text-[#059669] uppercase tracking-wide">STRONG</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
+                        <div className="w-4/5 h-full bg-[#059669] rounded-full"></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Confirm New Password</label>
+                      <div className="relative">
+                        <input type="password" {...registerPassword("confirmPassword")} className={inputClass} />
+                        <Eye size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                      </div>
+                      {passwordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.confirmPassword.message}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-6 border-t border-gray-200 -mx-8 px-8 -mb-8 pb-6 bg-gray-50/50">
+                    <button type="submit" disabled={isSubmittingPassword} className="bg-[#0057d9] text-white px-6 py-2.5 rounded-lg text-[14px] font-bold hover:bg-blue-700 transition disabled:opacity-70">
+                      {isSubmittingPassword ? "Updating..." : "Update Password"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

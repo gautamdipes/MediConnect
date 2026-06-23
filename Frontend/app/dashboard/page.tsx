@@ -1,5 +1,8 @@
-import React from "react";
-import Image from "next/image";
+"use client";
+
+import React, { useEffect } from "react";
+import { useAuth } from "./context/AuthContext";
+import { useRouter } from "next/navigation";
 import { 
   Bell, 
   Calendar as CalendarIcon, 
@@ -20,13 +23,27 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user, router]);
+  const profilePicSrc = user?.profileImage 
+    ? `http://localhost:5000${user.profileImage}` 
+    : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop";
+
+  const firstName = user?.fullName ? user.fullName.split(" ")[0] : "Manash";
+
   return (
-    <div className="p-8 max-w-[1400px] mx-auto relative pb-20">
+    <div className="p-6 md:p-8 max-w-[1400px] mx-auto relative pb-20">
       {/* Header Area */}
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            Good Morning, Manash <span className="text-3xl">👋</span>
+            Good Morning, {firstName} <span className="text-3xl">👋</span>
           </h1>
           <p className="text-gray-500 mt-1">
             Manage your healthcare journey easily with Mediconnect
@@ -38,13 +55,12 @@ export default function DashboardPage() {
             <CalendarIcon size={16} />
             <span>June 25, 2026</span>
           </div>
-          <button className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors relative">
-            <Bell size={20} />
-            <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+          <button className="p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
+            <Bell size={22} strokeWidth={2.5} />
           </button>
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm ml-2">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm ml-2 shrink-0">
             <img 
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop" 
+              src={profilePicSrc} 
               alt="User" 
               className="object-cover w-full h-full"
             />
@@ -53,39 +69,39 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <button className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-            <PlusSquare size={24} />
+            <PlusSquare size={24} strokeWidth={2.5} />
           </div>
-          <span className="font-semibold text-gray-800">Find Hospital</span>
+          <span className="font-bold text-[15px] text-gray-900 leading-tight text-left">Find<br/>Hospital</span>
         </button>
 
         <button className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-            <Stethoscope size={24} />
+            <Stethoscope size={24} strokeWidth={2.5} />
           </div>
-          <span className="font-semibold text-gray-800">Find Doctor</span>
+          <span className="font-bold text-[15px] text-gray-900 leading-tight text-left">Find<br/>Doctor</span>
         </button>
 
         <button className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-600">
-            <CalendarCheck size={24} />
+            <CalendarCheck size={24} strokeWidth={2.5} />
           </div>
-          <span className="font-semibold text-gray-800">Book<br/>Appointment</span>
+          <span className="font-bold text-[15px] text-gray-900 leading-tight text-left">Book<br/>Appointment</span>
         </button>
 
-        <button className="bg-red-100 p-5 rounded-2xl shadow-sm border border-red-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+        <button className="bg-red-50 p-5 rounded-2xl shadow-sm border border-red-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center text-white">
-            <Cross size={24} className="rotate-45" />
+            <Cross size={24} strokeWidth={3} className="rotate-45" />
           </div>
-          <span className="font-semibold text-red-700">Emergency<br/>Care</span>
+          <span className="font-bold text-[15px] text-red-700 leading-tight text-left">Emergency<br/>Care</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (Main content) */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6">
           
           {/* Nearby Hospitals */}
           <section>
@@ -239,7 +255,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column (Sidebar content) */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           
           {/* Upcoming Appointment */}
           <section>

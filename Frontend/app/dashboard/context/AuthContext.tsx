@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { setAuthToken } from "@/lib/proxy";
-import { getTokenCookie, getUserData, clearAuthCookies } from "@/lib/cookies";
+import { clearAuthCookies } from "@/lib/cookies";
 
 // Define user type
 export type User = {
@@ -29,32 +29,19 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
-  // Initialise auth state from localStorage or fallback to cookies
+  // Initialise auth state from localStorage only
   useEffect(() => {
-    const initAuth = async () => {
-      let storedToken = localStorage.getItem("authToken");
-      let storedUser = localStorage.getItem("authUser");
+    const storedToken = localStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("authUser");
 
-      if (!storedToken || !storedUser) {
-        const cookieToken = await getTokenCookie();
-        const cookieUser = await getUserData();
-        if (cookieToken && cookieUser) {
-          storedToken = cookieToken;
-          storedUser = JSON.stringify(cookieUser);
-          localStorage.setItem("authToken", storedToken);
-          localStorage.setItem("authUser", storedUser);
-        }
-      }
-
-      if (storedToken && storedUser) {
-        setToken(storedToken);
+    if (storedToken) {
+      setAuthToken(storedToken);
+      setToken(storedToken);
+      if (storedUser) {
         setUser(JSON.parse(storedUser));
-        setAuthToken(storedToken);
       }
-    };
-    initAuth();
+    }
   }, []);
-
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
