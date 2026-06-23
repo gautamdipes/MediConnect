@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AuthContextProvider } from "./dashboard/context/AuthContext";
 
 export default function AuthLayout({
   children,
@@ -13,7 +12,6 @@ export default function AuthLayout({
   const isSignup = pathname.includes("/signup") || pathname.includes("/register");
 
   return (
-    <AuthContextProvider>
     <div className="flex min-h-screen flex-col bg-[#fafafa] text-[#111827]">
       <header className="mx-auto flex h-[56px] w-full max-w-[1320px] items-center justify-between bg-[#f4f6f8] px-8">
         <Link href="/" className="text-[20px] font-bold text-black">
@@ -86,6 +84,5 @@ export default function AuthLayout({
         <span>© 2024 MediConnect Medical Systems. All rights reserved.</span>
       </footer>
     </div>
-    </AuthContextProvider>
   );
 }

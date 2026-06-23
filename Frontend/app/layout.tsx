@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Clinical workflow and hospital operations platform.",
 };
 
+import { AuthContextProvider } from "@/app/dashboard/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,7 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthContextProvider>
+          {children}
+        </AuthContextProvider>
+      </body>
     </html>
   );
 }
