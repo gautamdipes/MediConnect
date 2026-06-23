@@ -10,8 +10,9 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     password: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     profileImage: { type: String },
+    dob: { type: String },
   },
   { timestamps: true }
 );
 
-export const UserModel = mongoose.model<IUserDocument>("User", userSchema);
+export const UserModel = mongoose.model<IUserDocument>("User", userSchema);

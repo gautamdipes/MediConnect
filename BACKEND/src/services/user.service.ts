@@ -87,5 +87,10 @@ export class UserService {
     const result = await userRepository.updateUser(userId, data);
     return { user: result, message: "User updated successfully" };
   }
-}
 
+  // New method to fetch a user by ID without modifying
+  async getUserById(userId: string) {
+    const user = await userRepository.findById(userId);
+    return user;
+  }
+}

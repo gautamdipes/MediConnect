@@ -8,18 +8,16 @@ const userService = new UserService();
  * Return logged‑in user details extracted from JWT payload.
  */
 export const whoami = async (req: Request, res: Response) => {
-  // authMiddleware attaches decoded token to req.user
   const user = (req as any).user;
   if (!user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  // Retrieve full user data from DB (optional, could just return payload)
   try {
-    const dbUser = await userService.updateUser(user.userId, {}); // fetch without changes
-    if (!dbUser.user) {
+    const dbUser = await userService.getUserById(user.userId);
+    if (!dbUser) {
       return res.status(404).json({ message: "User not found" });
     }
-    return res.status(200).json({ user: dbUser.user });
+    return res.status(200).json({ user: dbUser });
   } catch (err: any) {
     return res.status(500).json({ message: err.message });
   }
@@ -70,11 +68,11 @@ export const updatePassword = async (req: Request, res: Response) => {
   }
   try {
     // Verify old password using bcrypt
-    const dbUser = await userService.updateUser(user.userId, {}); // fetch current user data
-    if (!dbUser.user) {
+    const dbUser = await userService.getUserById(user.userId);
+    if (!dbUser) {
       return res.status(404).json({ message: "User not found" });
     }
-    const isMatch = await require('bcryptjs').compare(oldPassword, dbUser.user.password);
+    const isMatch = await require('bcryptjs').compare(oldPassword, dbUser.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Old password is incorrect" });
     }
