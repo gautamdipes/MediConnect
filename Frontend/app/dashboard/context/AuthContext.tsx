@@ -21,6 +21,7 @@ export type AuthContextType = {
   login: (token: string, user: User) => void;
   logout: () => void;
   setUser: (user: User) => void;
+  isInitialized: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialise auth state from localStorage only
   useEffect(() => {
@@ -41,6 +43,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         setUser(JSON.parse(storedUser));
       }
     }
+    setIsInitialized(true);
   }, []);
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
@@ -65,7 +68,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, setUser: setUserHelper }}>
+    <AuthContext.Provider value={{ user, token, isInitialized, login, logout, setUser: setUserHelper }}>
       {children}
     </AuthContext.Provider>
   );

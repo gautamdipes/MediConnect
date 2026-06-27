@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "./context/AuthContext";
 import { 
   LayoutDashboard, 
   FolderPlus, 
@@ -20,6 +21,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleSignOut = () => {
+    logout();
+    router.push("/"); // redirect to login or landing page
+  };
 
   const navLinks = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -78,7 +86,10 @@ export default function DashboardLayout({
                 <HelpCircle size={20} strokeWidth={2.5} className="text-gray-500" />
                 Support
               </button>
-              <button className="flex items-center gap-4 text-red-600 hover:text-red-700 transition-colors text-[15px] font-bold">
+              <button 
+                onClick={handleSignOut}
+                className="flex items-center gap-4 text-red-600 hover:text-red-700 transition-colors text-[15px] font-bold"
+              >
                 <LogOut size={20} strokeWidth={2.5} className="text-red-600" />
                 Sign Out
               </button>

@@ -114,8 +114,11 @@ export default function ProfilePage() {
       setUpdateMessage(null);
       const formData = new FormData();
       formData.append("fullName", data.fullName);
-      formData.append("phone", data.phone);
+      formData.append("email", data.email);
+      formData.append("phoneNumber", data.phone);
       formData.append("dob", data.dob);
+      if (data.address) formData.append("address", data.address);
+      if (data.gender) formData.append("gender", data.gender);
       if (selectedFile) {
         formData.append("file", selectedFile);
       }
@@ -142,7 +145,7 @@ export default function ProfilePage() {
       await apiRequest({
         method: "put",
         url: "/v1/auth/password",
-        data: { oldPassword: data.oldPassword, newPassword: data.newPassword },
+        data: { currentPassword: data.oldPassword, newPassword: data.newPassword },
       });
       resetPassword();
       setPasswordMessage({ type: "success", text: "Password updated successfully!" });
@@ -271,7 +274,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <label className={labelClass}>Email Address</label>
-                      <input type="email" {...registerProfile("email")} disabled className={`${inputClass} bg-gray-50 text-gray-500 cursor-not-allowed`} />
+                      <input type="email" {...registerProfile("email")} className={inputClass} />
                       {profileErrors.email && <p className="text-red-500 text-xs mt-1">{profileErrors.email.message}</p>}
                     </div>
                     <div>

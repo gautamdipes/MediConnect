@@ -24,15 +24,15 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isInitialized } = useAuth();
 
   useEffect(() => {
-    if (!user) {
+    if (isInitialized && !user) {
       router.replace('/login');
     }
-  }, [user, router]);
+  }, [user, isInitialized, router]);
   const profilePicSrc = user?.profileImage 
-    ? `http://localhost:5000${user.profileImage}` 
+    ? user.profileImage 
     : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop";
 
   const firstName = user?.fullName ? user.fullName.split(" ")[0] : "Manash";
