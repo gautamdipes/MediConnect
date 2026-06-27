@@ -21,8 +21,11 @@ app.get("/", (_req, res) => {
   res.send("Backend is working");
 });
 
+import adminUserRoutes from "./routes/admin/user.route";
+
 app.use("/api/users", userRoutes);
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin/users", adminUserRoutes);
 app.use(errorHandler);
 
 export default app;

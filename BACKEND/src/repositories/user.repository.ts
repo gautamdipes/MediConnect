@@ -17,4 +17,18 @@ export class UserRepository {
   async updateUser(userId: string, data: any) {
     return userModel.UserModel.findByIdAndUpdate(userId, data, { new: true });
   }
-}
+    async deleteUser(id: string) {
+      return userModel.UserModel.findByIdAndDelete(id).exec();
+    }
+
+    async count(filter: any) {
+      return userModel.UserModel.countDocuments(filter);
+    }
+
+    async findMany(filter: any, options: { skip: number; limit: number }) {
+      return userModel.UserModel.find(filter)
+        .skip(options.skip)
+        .limit(options.limit)
+        .exec();
+    }
+  }

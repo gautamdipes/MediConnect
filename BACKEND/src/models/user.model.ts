@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     dob: { type: String },
     address: { type: String },
     gender: { type: String },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
   },
   { timestamps: true }
 );
