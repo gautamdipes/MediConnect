@@ -1,32 +1,22 @@
-import path from "path";
 import multer from "multer";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+import { Request } from "express";
+import { Express } from "express-serve-static-core";
 
-// Destination folder for uploaded files (relative to project root)
+// Destination folder for uploads – create "uploads" at project root if it doesn't exist.
 const uploadDir = path.resolve(__dirname, "../../uploads");
 
-// Configure storage engine
+// Configure Multer storage with typed callbacks
 const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
+  destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const timestamp = Date.now();
     const ext = path.extname(file.originalname);
-    const safeName = file.fieldname.replace(/\s+/g, "_");
-    cb(null, `${timestamp}-${safeName}${ext}`);
+    const filename = `${uuidv4()}${ext}`;
+    cb(null, filename);
   },
 });
 
-
-
-// Optional: filter to accept only image files
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowed = /\.(jpeg|jpg|png|gif)$/i;
-  if (allowed.test(file.originalname)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only image files are allowed") as any, false);
-  }
-};
-
-export const uploads = multer({ storage, fileFilter });
+export const uploads = multer({ storage });

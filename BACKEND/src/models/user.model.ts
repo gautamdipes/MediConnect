@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     phoneNumber: { type: String, required: true },
     profileImage: { type: String },
     dob: { type: String },
+    address: { type: String },
+    gender: { type: String },
   },
   { timestamps: true }
 );

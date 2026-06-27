@@ -4,15 +4,11 @@ import { Request, Response, NextFunction } from "express";
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
-  console.log('Auth Middleware - Authorization header:', req.headers.authorization);
-
   if (!token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
   try {
-    const secret = process.env.JWT_SECRET || JWT_SECRET;
-    const decoded = jwt.verify(token, secret as string);
+    const decoded = jwt.verify(token, JWT_SECRET);
     (req as any).user = decoded;
     next();
   } catch {

@@ -2,10 +2,6 @@ import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
 
 const userService = new UserService();
-
-/**
- * Register a new user
- */
 export const registerUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -18,9 +14,6 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Login user – returns JWT token
- */
 export const loginUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -29,21 +22,20 @@ export const loginUser = async (req: Request, res: Response) => {
     const result = await userService.login(req.body);
     res.status(200).json(result);
   } catch (err: any) {
-    // Return unauthorized for invalid credentials
-    return res.status(401).json({ message: err.message || "Invalid email or password" });
+    // Attach proper HTTP status for invalid credentials
+    err.status = 401;
+    err.message = err.message || "Invalid email or password";
+    throw err; // Let the global error handler format the response
   }
 };
 
-/**
- * Update user profile (including optional file upload)
- */
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const profileImage = req.file?.path || undefined;
+    const profileImage = req.file ? `/uploads/${req.file.filename}` : undefined;
     const updateData = { ...req.body, profileImage };
     const result = await userService.updateUser(userId, updateData);
     res.status(200).json(result);
@@ -52,16 +44,13 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Upload profile image (separate endpoint)
- */
 export const uploadProfileImage = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const profileImage = req.file?.path;
+    const profileImage = req.file ? `/uploads/${req.file.filename}` : undefined;
     if (!profileImage) {
       return res.status(400).json({ message: "No file uploaded" });
     }
@@ -72,9 +61,6 @@ export const uploadProfileImage = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Delete profile image
- */
 export const deleteProfileImage = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
