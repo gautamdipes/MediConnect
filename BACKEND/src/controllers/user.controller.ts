@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
 
 const userService = new UserService();
+
 export const registerUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -22,10 +23,8 @@ export const loginUser = async (req: Request, res: Response) => {
     const result = await userService.login(req.body);
     res.status(200).json(result);
   } catch (err: any) {
-    // Attach proper HTTP status for invalid credentials
-    err.status = 401;
-    err.message = err.message || "Invalid email or password";
-    throw err; // Let the global error handler format the response
+    // ✅ Fixed — send response directly instead of throwing
+    return res.status(401).json({ message: err.message || "Invalid email or password" });
   }
 };
 

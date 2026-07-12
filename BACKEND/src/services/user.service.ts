@@ -4,12 +4,18 @@ import fs from "fs/promises";
 import path from "path";
 import { UserRepository } from "../repositories/user.repository";
 import { JWT_SECRET } from "../config/constant";
-import { CLIENT_URL, SECRET_KEY } from "../config/constant";
-import { sendEmail } from "../config/email";
+// import { CLIENT_URL, SECRET_KEY } from "../config/constant";
+// import { sendEmail } from "../config/email";
 
 const userRepository = new UserRepository();
 
 export class UserService {
+  checkPassword(userId: string, currentPassword: any) {
+      throw new Error("Method not implemented.");
+  }
+  deleteUser(userId: string) {
+      throw new Error("Method not implemented.");
+  }
   // ---------------------------------------------------------------
   // Remove a user's profile image (file system + DB cleanup)
   // ---------------------------------------------------------------
