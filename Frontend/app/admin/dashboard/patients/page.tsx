@@ -29,11 +29,12 @@ const BASE = "http://localhost:5000/api/v1/admin/users";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getInitials(name: string) {
+function getInitials(name?: string) {
+  if (!name) return "?";
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
-function getAvatarColor(name: string) {
+function getAvatarColor(name?: string) {
   const colors = [
     "bg-blue-100 text-blue-600",
     "bg-teal-100 text-teal-600",
@@ -42,7 +43,7 @@ function getAvatarColor(name: string) {
     "bg-amber-100 text-amber-600",
     "bg-emerald-100 text-emerald-600",
   ];
-  const idx = name.charCodeAt(0) % colors.length;
+  const idx = (name?.charCodeAt(0) ?? 0) % colors.length;
   return colors[idx];
 }
 
