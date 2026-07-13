@@ -1,17 +1,41 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Download, MoreVertical } from "lucide-react";
 
 export default function AdminDashboardPage() {
-  const hospitalData = [
-    { name: "St. Mary's Medical Center", location: "Downtown, NY", status: "VERIFIED", docs: 142 },
-    { name: "Northwest General", location: "Seattle, WA", status: "VERIFIED", docs: 89 },
-    { name: "Central Children's", location: "Austin, TX", status: "PENDING", docs: 56 },
-    { name: "Riverside Medical", location: "Portland, OR", status: "VERIFIED", docs: 64 },
-    { name: "Mercy General", location: "Chicago, IL", status: "VERIFIED", docs: 112 },
-    { name: "East Bay Clinic", location: "Oakland, CA", status: "PENDING", docs: 28 },
-    { name: "South Shore Medical", location: "Miami, FL", status: "VERIFIED", docs: 124 },
-  ];
+  const router = useRouter();
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalDoctors: 0,
+    totalHospitals: 0,
+    totalAppointments: 0
+  });
+  const [recentAppointments, setRecentAppointments] = useState([]);
+  const [hospitalData, setHospitalData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        const headers = { Authorization: `Bearer ${token}` };
+
+        // Fetch Overview Stats
+        const overviewRes = await fetch("http://localhost:5000/api/v1/admin/overview", { headers });
+        const overviewData = await overviewRes.json();
+        if (overviewData.stats) setStats(overviewData.stats);
+        if (overviewData.recentActivities) setRecentAppointments(overviewData.recentActivities);
+
+        // Fetch Hospitals
+        const hospRes = await fetch("http://localhost:5000/api/v1/admin/hospitals?limit=7", { headers });
+        const hospData = await hospRes.json();
+        if (hospData.hospitals) setHospitalData(hospData.hospitals);
+      } catch (err) {
+        console.error("Error fetching overview data:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-6">
@@ -27,7 +51,7 @@ export default function AdminDashboardPage() {
           <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg shadow-sm hover:bg-slate-50">
             <Download className="w-4 h-4" /> Export
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#0057d9] text-white rounded-lg shadow-sm hover:bg-blue-700 transition">
+          <button onClick={() => router.push('/admin/dashboard/facilities')} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#0057d9] text-white rounded-lg shadow-sm hover:bg-blue-700 transition">
             <Plus className="w-4 h-4" /> New Hospital
           </button>
         </div>
@@ -43,7 +67,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Active Users</span>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">12,482</h3>
+              <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">{stats.totalUsers.toLocaleString()}</h3>
             </div>
             <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">↗ +12.4%</span>
           </div>
@@ -58,7 +82,7 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between items-end w-full">
               <div>
                 <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Hospitals</span>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">48</h3>
+                <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">{stats.totalHospitals}</h3>
               </div>
               <div className="w-24 pb-2">
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -79,7 +103,7 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between items-end w-full">
               <div>
                 <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Doctors</span>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">856</h3>
+                <h3 className="text-3xl font-extrabold text-slate-900 mt-0.5">{stats.totalDoctors}</h3>
               </div>
               <svg className="w-20 h-6 stroke-slate-400 fill-none" strokeWidth={1.5}>
                 <path d="M0 20 Q 10 5, 20 15 T 40 8 T 60 18 T 80 12" />
@@ -111,7 +135,7 @@ export default function AdminDashboardPage() {
           <div className="hidden lg:block w-64 h-1.5 bg-blue-700 rounded-full overflow-hidden">
             <div className="bg-white h-full w-[98.4%] rounded-full"></div>
           </div>
-          <button className="whitespace-nowrap px-5 py-2.5 bg-white text-[#0057d9] text-sm font-bold rounded-xl shadow-sm hover:bg-blue-50 transition w-full md:w-auto">
+          <button onClick={() => router.push('/admin/dashboard/facilities')} className="whitespace-nowrap px-5 py-2.5 bg-white text-[#0057d9] text-sm font-bold rounded-xl shadow-sm hover:bg-blue-50 transition w-full md:w-auto">
             Launch Multi-Site View
           </button>
         </div>
@@ -124,7 +148,7 @@ export default function AdminDashboardPage() {
         <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-slate-900">Hospital Management</h3>
-            <button className="text-xs font-bold text-[#0057d9] hover:underline">View All</button>
+            <button onClick={() => router.push('/admin/dashboard/facilities')} className="text-xs font-bold text-[#0057d9] hover:underline">View All</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -138,10 +162,10 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {hospitalData.map((hospital, idx) => (
+                {hospitalData.map((hospital: any, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3.5 font-bold text-slate-800">{hospital.name}</td>
-                    <td className="py-3.5 text-slate-500">{hospital.location}</td>
+                    <td className="py-3.5 font-bold text-slate-800">{hospital.hospitalName}</td>
+                    <td className="py-3.5 text-slate-500">{hospital.city}, {hospital.state}</td>
                     <td className="py-3.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         hospital.status === "VERIFIED" 
@@ -151,7 +175,7 @@ export default function AdminDashboardPage() {
                         {hospital.status}
                       </span>
                     </td>
-                    <td className="py-3.5 text-slate-600 font-medium">{hospital.docs}</td>
+                    <td className="py-3.5 text-slate-600 font-medium">{hospital.doctorsCount || 0}</td>
                     <td className="py-3.5 text-right text-slate-400">
                       <button className="p-1 hover:text-slate-600 rounded">
                         <MoreVertical className="w-4 h-4" />
@@ -176,29 +200,36 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="space-y-3">
-              {[
-                { name: "Jane Doe", dept: "Cardiology", time: "10:30 AM", status: "Confirmed", initial: "JD", bg: "bg-blue-50 text-blue-600" },
-                { name: "Mike Smith", dept: "GP", time: "11:15 AM", status: "Confirmed", initial: "MS", bg: "bg-teal-50 text-teal-600" },
-                { name: "Robert King", dept: "Neuro", time: "12:00 PM", status: "Waiting", initial: "RK", bg: "bg-slate-100 text-slate-600" },
-              ].map((apt, idx) => (
-                <div key={idx} className="flex items-center justify-between p-1">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${apt.bg}`}>
-                      {apt.initial}
+              {recentAppointments.length === 0 ? (
+                <div className="text-center text-sm text-slate-400 py-4">No recent appointments</div>
+              ) : recentAppointments.map((apt: any, idx) => {
+                const patientName = apt.patientId?.fullName || apt.patientName || "Unknown";
+                const initial = patientName.substring(0, 2).toUpperCase();
+                const docName = apt.doctorId?.fullName || apt.doctorName || "Unknown Doc";
+                const rawStatus = apt.status || "PENDING";
+                const formattedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+                const isConfirmed = rawStatus === "CONFIRMED";
+                
+                return (
+                  <div key={idx} className="flex items-center justify-between p-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${isConfirmed ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {initial}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">{patientName}</h4>
+                        <p className="text-[11px] text-slate-400 font-medium">{docName} • {new Date(apt.date).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800">{apt.name}</h4>
-                      <p className="text-[11px] text-slate-400 font-medium">{apt.dept} • {apt.time}</p>
-                    </div>
+                    <span className={`text-[11px] font-bold ${isConfirmed ? "text-emerald-600" : "text-slate-400"}`}>
+                      {formattedStatus}
+                    </span>
                   </div>
-                  <span className={`text-[11px] font-bold ${apt.status === "Confirmed" ? "text-emerald-600" : "text-slate-400"}`}>
-                    {apt.status}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <button className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition">
+            <button onClick={() => router.push('/admin/dashboard/appointments')} className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition">
               Schedule
             </button>
           </div>
@@ -212,9 +243,9 @@ export default function AdminDashboardPage() {
 
             <div className="space-y-2">
               {[
-                { label: "Active Doctors", count: 742, dotColor: "bg-emerald-500" },
-                { label: "On Leave", count: 114, dotColor: "bg-slate-400" },
-                { label: "Emergency", count: 12, dotColor: "bg-red-500" },
+                { label: "Active Doctors", count: stats.totalDoctors, dotColor: "bg-emerald-500" },
+                { label: "Total Users", count: stats.totalUsers, dotColor: "bg-blue-500" },
+                { label: "Total Appts", count: stats.totalAppointments, dotColor: "bg-purple-500" },
               ].map((status, idx) => (
                 <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50/60 rounded-xl">
                   <div className="flex items-center gap-2.5">

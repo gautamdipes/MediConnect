@@ -1,5 +1,5 @@
-﻿"use client";
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import { Calendar, CheckCircle, XCircle, AlertTriangle, Search, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import AppointmentModal from "./components/AppointmentModal";
 import DeleteModal from "./components/DeleteModal";
@@ -30,7 +30,7 @@ const statusStyle: Record<string, string> = {
 };
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
   const [hospital, setHospital] = useState("All Hospitals");
   const [status, setStatus] = useState("All Status");
@@ -41,6 +41,45 @@ export default function AppointmentsPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 5;
+
+  const fetchAppointments = async () => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const res = await fetch("http://localhost:5000/api/v1/admin/appointments?limit=100", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.appointments) {
+        const mapped = data.appointments.map((apt: any) => {
+          const patientName = apt.patientId?.fullName || apt.patientName || "Unknown";
+          const initial = patientName.substring(0, 2).toUpperCase();
+          const doctorName = apt.doctorId?.fullName || apt.doctorName || "Unknown Doctor";
+          const hospitalName = apt.hospitalId?.hospitalName || apt.hospitalName || "Unknown Hospital";
+
+          const rawStatus = apt.status || "PENDING";
+          const formattedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+
+          return {
+            id: apt._id,
+            patient: patientName,
+            initials: initial,
+            doctor: doctorName,
+            hospital: hospitalName,
+            datetime: `${new Date(apt.date || apt.createdAt).toLocaleDateString()} ${apt.time || ''}`,
+            status: formattedStatus
+          };
+        });
+        setAppointments(mapped);
+      }
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
 
   const filtered = appointments.filter((a) => {
     const matchSearch =
@@ -55,36 +94,76 @@ export default function AppointmentsPage() {
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const handleCreate = (form: Omit<Appointment, "id">) => {
+  const handleCreate = async (form: Omit<Appointment, "id" | "initials">) => {
     setModalLoading(true);
-    setTimeout(() => {
-      const newId = `#APT-${Math.floor(Math.random() * 9000 + 1000)}`;
-      setAppointments([{ ...form, id: newId }, ...appointments]);
+    try {
+      const token = localStorage.getItem("adminToken");
+      await fetch("http://localhost:5000/api/v1/admin/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          patientName: form.patient,
+          doctorName: form.doctor,
+          hospitalName: form.hospital,
+          date: form.datetime.split("T")[0],
+          time: form.datetime.split("T")[1] || "00:00",
+          reason: "Admin Booking",
+          status: form.status ? form.status.toUpperCase() : "PENDING",
+        }),
+      });
+      await fetchAppointments();
       setShowCreate(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setModalLoading(false);
-    }, 500);
+    }
   };
 
-  const handleEdit = (form: Omit<Appointment, "id">) => {
+  const handleEdit = async (form: Omit<Appointment, "id" | "initials">) => {
     if (!selected) return;
     setModalLoading(true);
-    setTimeout(() => {
-      setAppointments(appointments.map((a) => a.id === selected.id ? { ...form, id: selected.id } : a));
+    try {
+      const token = localStorage.getItem("adminToken");
+      await fetch(`http://localhost:5000/api/v1/admin/appointments/${selected.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          patientName: form.patient,
+          doctorName: form.doctor,
+          hospitalName: form.hospital,
+          date: form.datetime ? form.datetime.split("T")[0] : undefined,
+          time: form.datetime ? form.datetime.split("T")[1] : undefined,
+          status: form.status ? form.status.toUpperCase() : "PENDING",
+        }),
+      });
+      await fetchAppointments();
       setShowEdit(false);
       setSelected(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setModalLoading(false);
-    }, 500);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return;
     setModalLoading(true);
-    setTimeout(() => {
-      setAppointments(appointments.filter((a) => a.id !== selected.id));
+    try {
+      const token = localStorage.getItem("adminToken");
+      await fetch(`http://localhost:5000/api/v1/admin/appointments/${selected.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await fetchAppointments();
       setShowDelete(false);
       setSelected(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setModalLoading(false);
-    }, 500);
+    }
   };
 
   return (
