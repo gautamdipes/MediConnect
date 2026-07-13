@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, uploadProfileImage } from "../controllers/user.controller";
+import { registerUser, loginUser, uploadProfileImage, updateUser } from "../controllers/user.controller";
 import { getMedicalRecords } from "../controllers/medical-record.controller";
 import { authMiddleware } from "../middleware/authorized.middleware";
 import { uploads } from "../middleware/upload.middleware";
@@ -12,13 +12,37 @@ import {
   cancelMyAppointment,
   getDashboardOverview,
 } from "../controllers/user/appointment.controller";
+import { UserRepository } from "../repositories/user.repository";
 
 const router = Router();
+const userRepo = new UserRepository();
 
 // Auth
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/auth/profile/upload", authMiddleware, uploads.single("file"), uploadProfileImage);
+
+// Profile
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const user = await userRepo.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        profileImage: user.profileImage,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+router.put("/profile", authMiddleware, uploads.single("file"), updateUser);
 
 // Dashboard
 router.get("/dashboard", authMiddleware, getDashboardOverview);
