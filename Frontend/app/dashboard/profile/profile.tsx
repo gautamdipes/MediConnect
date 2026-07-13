@@ -18,6 +18,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 import type { User } from "../context/AuthContext";
 import { apiRequest } from "@/lib/proxy";
+import { UserNotificationsDropdown } from "../components/UserNotificationsDropdown";
+import React from "react";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -47,6 +49,8 @@ export default function ProfilePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = React.useRef<HTMLButtonElement>(null);
 
   // Profile Form
   const {
@@ -175,9 +179,20 @@ export default function ProfilePage() {
           />
         </div>
         <div className="flex items-center gap-5">
-          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-            <Bell size={22} strokeWidth={2} />
-          </button>
+          <div className="relative">
+            <button
+              ref={bellRef}
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={`text-gray-600 transition-colors ${showNotifications ? "text-blue-600" : "hover:text-gray-900"}`}
+            >
+              <Bell size={22} strokeWidth={2} />
+            </button>
+            <UserNotificationsDropdown
+              open={showNotifications}
+              onClose={() => setShowNotifications(false)}
+              anchorRef={bellRef}
+            />
+          </div>
           <button className="text-gray-600 hover:text-gray-900 transition-colors">
             <Settings size={22} strokeWidth={2} />
           </button>

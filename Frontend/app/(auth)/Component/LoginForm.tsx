@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
 
 import { loginSchema, LoginFormData } from "./schema"; 
-import { handleLoginUser } from "@/lib/actions/auth-action";
+import { login as loginApi } from "@/lib/api/auth";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -33,25 +33,26 @@ export default function LoginForm() {
 
     startTransition(async () => {
       try {
-        const result = await handleLoginUser(data);
+        const result = await loginApi(data);
+console.log('Login API result:', result);
 
-        if (result.success && result.data) {
-          login(result.data.token, result.data.user);
+        if (result && result.token) {
+          login(result.token, result.user);
           if (isAdmin) {
-            const adminCheck = await fetch("http://localhost:5000/api/v1/admin/users?page=1&limit=1", {
-              headers: { Authorization: `Bearer ${result.data.token}` },
+            const adminCheck = await fetch(`http://localhost:5000/api/v1/admin/users?page=1&limit=1`, {
+              headers: { Authorization: `Bearer ${result.token}` },
             });
             if (!adminCheck.ok) {
               setError("You do not have admin access!");
               return;
             }
-            localStorage.setItem("adminToken", result.data.token);
+            localStorage.setItem("adminToken", result.token);
             router.push("/admin/dashboard");
           } else {
             router.push("/dashboard");
           }
         } else {
-          setError(result.message || "Login failed");
+          setError("Login failed");
         }
       } catch (err: any) {
         setError(err?.message || "Login failed");

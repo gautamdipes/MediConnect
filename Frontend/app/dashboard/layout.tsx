@@ -13,8 +13,11 @@ import {
   Plus, 
   HelpCircle, 
   LogOut,
-  BriefcaseMedical
+  BriefcaseMedical,
+  Settings
 } from "lucide-react";
+
+import { UserSettingsPanel } from "./components/UserSettingsPanel";
 
 export default function DashboardLayout({
   children,
@@ -24,6 +27,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  const [showSettings, setShowSettings] = React.useState(false);
 
   const handleSignOut = () => {
     if (logout) logout();
@@ -40,6 +44,8 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-[#f3f4f6] overflow-hidden antialiased font-sans text-gray-900">
+      <UserSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} />
+      
       {/* Sidebar Navigation */}
       <aside className="w-[260px] bg-white border-r border-gray-200/80 flex flex-col justify-between hidden md:flex shrink-0">
         <div>
@@ -91,6 +97,13 @@ export default function DashboardLayout({
             </button>
 
             <div className="flex flex-col gap-1">
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="flex items-center gap-3.5 px-3 py-2 text-gray-500 hover:text-gray-900 transition-colors text-xs font-bold rounded-lg hover:bg-gray-50"
+              >
+                <Settings size={16} strokeWidth={2.5} className="text-gray-400" />
+                Settings
+              </button>
               <button className="flex items-center gap-3.5 px-3 py-2 text-gray-500 hover:text-gray-900 transition-colors text-xs font-bold rounded-lg hover:bg-gray-50">
                 <HelpCircle size={16} strokeWidth={2.5} className="text-gray-400" />
                 Support

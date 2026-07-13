@@ -32,6 +32,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
+import { UserNotificationsDropdown } from "./components/UserNotificationsDropdown";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -66,8 +67,8 @@ interface Doctor {
   rating: number;
   experience: number;
   profileImage?: string;
-  hospitalName?: string;
   status: string;
+  hospitalId?: string;
 }
 
 interface Hospital {
@@ -186,15 +187,25 @@ function BookModal({
               <Stethoscope size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
                 value={form.doctorId}
-                onChange={(e) => setForm({ ...form, doctorId: e.target.value })}
+                onChange={(e) => {
+                  const selectedDoctorId = e.target.value;
+                  const doc = doctors.find(d => d._id === selectedDoctorId);
+                  setForm({ 
+                    ...form, 
+                    doctorId: selectedDoctorId,
+                    hospitalId: doc?.hospitalId ? doc.hospitalId : form.hospitalId 
+                  });
+                }}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
               >
                 <option value="">Select a doctor</option>
-                {doctors.map((d) => (
-                  <option key={d._id} value={d._id}>
-                    {d.fullName} — {d.specialization}
-                  </option>
-                ))}
+                {doctors
+                  .filter(d => form.hospitalId ? d.hospitalId === form.hospitalId : true)
+                  .map((d) => (
+                    <option key={d._id} value={d._id}>
+                      {d.fullName} — {d.specialization}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -206,7 +217,18 @@ function BookModal({
               <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
                 value={form.hospitalId}
-                onChange={(e) => setForm({ ...form, hospitalId: e.target.value })}
+                onChange={(e) => {
+                  const newHospitalId = e.target.value;
+                  setForm(prev => {
+                    const currentDoc = doctors.find(d => d._id === prev.doctorId);
+                    const shouldClearDoctor = currentDoc && currentDoc.hospitalId !== newHospitalId;
+                    return {
+                      ...prev,
+                      hospitalId: newHospitalId,
+                      doctorId: shouldClearDoctor ? "" : prev.doctorId
+                    };
+                  });
+                }}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
               >
                 <option value="">Select a hospital</option>
@@ -336,6 +358,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showBookModal, setShowBookModal] = useState(false);
   const [apptFilter, setApptFilter] = useState("ALL");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = React.useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!user) router.replace("/login");
@@ -419,9 +443,20 @@ export default function DashboardPage() {
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           </button>
-          <button className="p-2 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
-            <Bell size={17} strokeWidth={2.5} />
-          </button>
+          <div className="relative">
+            <button
+              ref={bellRef}
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={`p-2 border rounded-full transition-colors ${showNotifications ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600"}`}
+            >
+              <Bell size={17} strokeWidth={2.5} />
+            </button>
+            <UserNotificationsDropdown
+              open={showNotifications}
+              onClose={() => setShowNotifications(false)}
+              anchorRef={bellRef}
+            />
+          </div>
           <img src={profilePicSrc} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 shadow-sm" />
         </div>
       </header>
