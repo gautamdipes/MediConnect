@@ -2,13 +2,28 @@ import { MedicalRecordModel, IMedicalRecord } from "../models/medical-record.mod
 import mongoose from "mongoose";
 
 export class MedicalRecordService {
-  async getMedicalRecords(query: { patientId?: string; doctorId?: string }) {
+  async getMedicalRecords(query: { patientId?: string; doctorId?: string; search?: string; status?: string; dept?: string }) {
     const filter: any = {};
     if (query.patientId) {
       filter.patientId = new mongoose.Types.ObjectId(query.patientId);
     }
     if (query.doctorId) {
       filter.doctorId = new mongoose.Types.ObjectId(query.doctorId);
+    }
+    if (query.status) {
+      filter.status = query.status;
+    }
+    if (query.dept) {
+      filter.dept = query.dept;
+    }
+    if (query.search) {
+      const regex = new RegExp(query.search, "i");
+      filter.$or = [
+        { diagnosis: regex },
+        { prescription: regex },
+        { recordName: regex },
+        { dept: regex },
+      ];
     }
 
     const records = await MedicalRecordModel.find(filter)

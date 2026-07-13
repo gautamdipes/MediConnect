@@ -27,16 +27,16 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/uploads", express.static(path.resolve(__dirname, "../../uploads")));
+app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")));
 
 app.get("/", (_req, res) => {
   res.send("Backend is working");
 });
 
 // Public routes
-app.use("/api/users",           userRoutes);
-app.use("/api/v1/auth",         authRoutes);
-app.use("/api/medical-records", medicalRecordRoutes);
+app.use("/api/v1/users",              userRoutes);
+app.use("/api/v1/auth",               authRoutes);
+app.use("/api/v1/medical-records",    medicalRecordRoutes);
 
 // Admin routes
 app.use("/api/v1/admin/users",        adminUserRoutes);

@@ -51,6 +51,19 @@ export class AdminAppointmentService {
     return appointment;
   }
 
+  async createAppointment(data: any) {
+    const appointment = await AppointmentModel.create(data);
+    return appointment;
+  }
+
+  async updateAppointment(id: string, data: any) {
+    const appointment = await AppointmentModel.findByIdAndUpdate(id, data, { new: true });
+    if (!appointment) {
+      throw { status: 404, message: "Appointment not found" };
+    }
+    return appointment;
+  }
+
   async deleteAppointment(id: string) {
     const appointment = await AppointmentModel.findByIdAndDelete(id);
     if (!appointment) {
