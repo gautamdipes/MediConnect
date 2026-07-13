@@ -1,534 +1,581 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
-/* ============================================================
-   Doctor Management — CONTENT ONLY (no sidebar / no topbar)
-   Use this inside your existing admin layout, which already
-   renders the sidebar and topbar for every page.
-   ============================================================ */
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type DoctorStatus = "ACTIVE" | "ON_LEAVE" | "INACTIVE" | "EMERGENCY";
 
 interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  initials: string;
-  avatarBg: string;
-  avatarText: string;
-  hospital: string;
+  _id: string;
+  fullName: string;
+  email: string;
   phone: string;
-  status: "verified" | "pending";
+  specialization: string;
+  department: string;
+  hospitalName?: string;
+  experience: number;
+  rating: number;
+  status: DoctorStatus;
+  gender?: string;
+  qualifications?: string[];
+  createdAt: string;
 }
 
-const DOCTORS: Doctor[] = [
-  {
-    id: "#DOC-1024",
-    name: "Dr. Sarah Jenkins",
-    specialty: "Cardiology",
-    initials: "SJ",
-    avatarBg: "#DBEAFE",
-    avatarText: "#2563EB",
-    hospital: "Central General",
-    phone: "+1 (555) 012-3456",
-    status: "verified",
-  },
-  {
-    id: "#DOC-1025",
-    name: "Dr. Marcus Chen",
-    specialty: "Surgery",
-    initials: "MC",
-    avatarBg: "#DCFCE7",
-    avatarText: "#16A34A",
-    hospital: "North Star Surgical",
-    phone: "+1 (555) 012-3457",
-    status: "verified",
-  },
-  {
-    id: "#DOC-1026",
-    name: "Dr. Elena Rodriguez",
-    specialty: "Pediatrics",
-    initials: "ER",
-    avatarBg: "#FFEDD5",
-    avatarText: "#EA580C",
-    hospital: "Eastside Community",
-    phone: "+1 (555) 012-3458",
-    status: "pending",
-  },
-  {
-    id: "#DOC-1049",
-    name: "Dr. James Wilson",
-    specialty: "Neurology",
-    initials: "DJW",
-    avatarBg: "#E0E7FF",
-    avatarText: "#4F46E5",
-    hospital: "Central Hospital",
-    phone: "+1 (555) 012-4449",
-    status: "verified",
-  },
-];
+interface Stats {
+  total: number;
+  active: number;
+  onLeave: number;
+  emergency: number;
+  avgRating: number;
+}
 
-export default function DoctorManagementContent() {
-  const [page] = useState(1);
+interface FormState {
+  fullName: string;
+  email: string;
+  phone: string;
+  specialization: string;
+  department: string;
+  hospitalName: string;
+  experience: string;
+  rating: string;
+  status: DoctorStatus;
+  gender: string;
+}
+
+const EMPTY_FORM: FormState = {
+  fullName: "", email: "", phone: "", specialization: "",
+  department: "", hospitalName: "", experience: "0",
+  rating: "0", status: "ACTIVE", gender: "Male",
+};
+
+const DEPARTMENTS   = ["Cardiology", "Surgery", "Pediatrics", "Neurology", "Radiology", "Orthopedics", "Dermatology", "General Practice", "Emergency", "Other"];
+const STATUSES: DoctorStatus[] = ["ACTIVE", "ON_LEAVE", "INACTIVE", "EMERGENCY"];
+const PAGE_SIZE     = 10;
+const BASE          = "http://localhost:5000/api/v1/admin/doctors";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function getAvatarColor(name: string) {
+  const colors = [
+    { bg: "#DBEAFE", text: "#2563EB" },
+    { bg: "#DCFCE7", text: "#16A34A" },
+    { bg: "#FFEDD5", text: "#EA580C" },
+    { bg: "#E0E7FF", text: "#4F46E5" },
+    { bg: "#FCE7F3", text: "#DB2777" },
+    { bg: "#FEF3C7", text: "#D97706" },
+  ];
+  return colors[name.charCodeAt(0) % colors.length];
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ── Status Badge ──────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: DoctorStatus }) {
+  const map: Record<DoctorStatus, { bg: string; color: string }> = {
+    ACTIVE:    { bg: "#DCFCE7", color: "#15803D" },
+    ON_LEAVE:  { bg: "#F1F5F9", color: "#475569" },
+    INACTIVE:  { bg: "#F1F5F9", color: "#94A3B8" },
+    EMERGENCY: { bg: "#FEE2E2", color: "#DC2626" },
+  };
+  const s = map[status];
+  return (
+    <span style={{
+      padding: "3px 10px", borderRadius: "999px", fontSize: "11px",
+      fontWeight: 700, backgroundColor: s.bg, color: s.color,
+    }}>
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 50,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.4)", padding: "16px",
+    }}>
+      <div style={{
+        background: "white", borderRadius: "16px", width: "100%",
+        maxWidth: "520px", boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+        maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #F1F5F9" }}>
+          <span style={{ fontWeight: 700, fontSize: "15px", color: "#0F172A" }}>{title}</span>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "18px", color: "#94A3B8" }}>✕</button>
+        </div>
+        <div style={{ overflowY: "auto", padding: "20px" }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Doctor Form ───────────────────────────────────────────────────────────────
+
+function DoctorForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: {
+  form: FormState;
+  onChange: (k: keyof FormState, v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  submitLabel: string;
+}) {
+  const inputStyle: React.CSSProperties = {
+    width: "100%", height: "38px", padding: "0 10px",
+    border: "1px solid #E2E8F0", borderRadius: "8px",
+    fontSize: "13px", outline: "none", boxSizing: "border-box",
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: "11px", fontWeight: 700, color: "#64748B",
+    textTransform: "uppercase", letterSpacing: "0.04em",
+    display: "block", marginBottom: "5px",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div>
+          <label style={labelStyle}>Full Name *</label>
+          <input style={inputStyle} value={form.fullName} onChange={(e) => onChange("fullName", e.target.value)} placeholder="Dr. John Doe" />
+        </div>
+        <div>
+          <label style={labelStyle}>Email *</label>
+          <input style={inputStyle} type="email" value={form.email} onChange={(e) => onChange("email", e.target.value)} placeholder="doctor@hospital.com" />
+        </div>
+        <div>
+          <label style={labelStyle}>Phone *</label>
+          <input style={inputStyle} value={form.phone} onChange={(e) => onChange("phone", e.target.value)} placeholder="+1 (555) 000-0000" />
+        </div>
+        <div>
+          <label style={labelStyle}>Gender</label>
+          <select style={inputStyle} value={form.gender} onChange={(e) => onChange("gender", e.target.value)}>
+            {["Male", "Female", "Other"].map((g) => <option key={g}>{g}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Specialization *</label>
+          <input style={inputStyle} value={form.specialization} onChange={(e) => onChange("specialization", e.target.value)} placeholder="e.g. Cardiology" />
+        </div>
+        <div>
+          <label style={labelStyle}>Department *</label>
+          <select style={inputStyle} value={form.department} onChange={(e) => onChange("department", e.target.value)}>
+            <option value="">Select...</option>
+            {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Hospital</label>
+          <input style={inputStyle} value={form.hospitalName} onChange={(e) => onChange("hospitalName", e.target.value)} placeholder="Hospital name" />
+        </div>
+        <div>
+          <label style={labelStyle}>Status</label>
+          <select style={inputStyle} value={form.status} onChange={(e) => onChange("status", e.target.value as DoctorStatus)}>
+            {STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Experience (years)</label>
+          <input style={inputStyle} type="number" min="0" value={form.experience} onChange={(e) => onChange("experience", e.target.value)} />
+        </div>
+        <div>
+          <label style={labelStyle}>Rating (0–5)</label>
+          <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={form.rating} onChange={(e) => onChange("rating", e.target.value)} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+        <button onClick={onCancel} style={{ padding: "8px 16px", border: "1px solid #E2E8F0", borderRadius: "8px", background: "white", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#334155" }}>
+          Cancel
+        </button>
+        <button
+          onClick={onSubmit}
+          disabled={saving}
+          style={{ padding: "8px 18px", border: "none", borderRadius: "8px", background: "#2563EB", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+        >
+          {saving ? "Saving..." : submitLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── View Modal ────────────────────────────────────────────────────────────────
+
+function ViewDoctorModal({ doctor, onClose }: { doctor: Doctor; onClose: () => void }) {
+  const avatar = getAvatarColor(doctor.fullName);
+  const row = (label: string, value: string) => (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F8FAFC" }}>
+      <span style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: "13px", color: "#0F172A", fontWeight: 600 }}>{value || "—"}</span>
+    </div>
+  );
+
+  return (
+    <Modal title="Doctor Details" onClose={onClose}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px", padding: "12px", background: "#F8FAFC", borderRadius: "10px" }}>
+        <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: avatar.bg, color: avatar.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: 700, flexShrink: 0 }}>
+          {getInitials(doctor.fullName)}
+        </div>
+        <div>
+          <p style={{ fontWeight: 700, fontSize: "15px", color: "#0F172A", margin: 0 }}>{doctor.fullName}</p>
+          <p style={{ fontSize: "12px", color: "#64748B", margin: "2px 0 6px" }}>{doctor.email}</p>
+          <StatusBadge status={doctor.status} />
+        </div>
+      </div>
+      {row("Phone",          doctor.phone)}
+      {row("Specialization", doctor.specialization)}
+      {row("Department",     doctor.department)}
+      {row("Hospital",       doctor.hospitalName ?? "")}
+      {row("Experience",     `${doctor.experience} years`)}
+      {row("Rating",         `${doctor.rating} / 5`)}
+      {row("Gender",         doctor.gender ?? "")}
+      {row("Joined",         formatDate(doctor.createdAt))}
+    </Modal>
+  );
+}
+
+// ── Delete Confirm ────────────────────────────────────────────────────────────
+
+function DeleteModal({ name, onClose, onConfirm, deleting }: {
+  name: string; onClose: () => void; onConfirm: () => void; deleting: boolean;
+}) {
+  return (
+    <Modal title="Delete Doctor" onClose={onClose}>
+      <p style={{ fontSize: "13px", color: "#475569", marginBottom: "20px" }}>
+        Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone.
+      </p>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <button onClick={onClose} style={{ padding: "8px 16px", border: "1px solid #E2E8F0", borderRadius: "8px", background: "white", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#334155" }}>Cancel</button>
+        <button onClick={onConfirm} disabled={deleting} style={{ padding: "8px 16px", border: "none", borderRadius: "8px", background: "#DC2626", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 600, opacity: deleting ? 0.6 : 1 }}>
+          {deleting ? "Deleting..." : "Delete"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function DoctorManagementPage() {
+  const [doctors, setDoctors]       = useState<Doctor[]>([]);
+  const [stats, setStats]           = useState<Stats | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState("");
+  const [search, setSearch]         = useState("");
+  const [statusFilter, setStatus]   = useState("All");
+  const [deptFilter, setDept]       = useState("All");
+  const [page, setPage]             = useState(1);
+  const [total, setTotal]           = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [selected, setSelected]     = useState<Set<string>>(new Set());
+
+  // Modal state
+  const [viewDoc, setViewDoc]       = useState<Doctor | null>(null);
+  const [editDoc, setEditDoc]       = useState<Doctor | null>(null);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [deleteDoc, setDeleteDoc]   = useState<Doctor | null>(null);
+  const [form, setForm]             = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving]         = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+
+  // ── Fetch ───────────────────────────────────────────────────────────────────
+
+  const fetchDoctors = useCallback(async () => {
+    try {
+      setLoading(true); setError("");
+      const params = new URLSearchParams({
+        page: String(page), limit: String(PAGE_SIZE),
+        ...(search       ? { search }             : {}),
+        ...(statusFilter !== "All" ? { status: statusFilter } : {}),
+        ...(deptFilter   !== "All" ? { department: deptFilter } : {}),
+      });
+      const res = await fetch(`${BASE}?${params}`, { headers });
+      if (!res.ok) throw new Error("Failed to fetch doctors");
+      const data = await res.json();
+      setDoctors(data.data ?? []);
+      setTotal(data.meta?.total ?? 0);
+      setTotalPages(data.meta?.totalPages ?? 1);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, statusFilter, deptFilter, token]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/stats`, { headers });
+      if (!res.ok) return;
+      setStats(await res.json());
+    } catch {}
+  }, [token]);
+
+  useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
+  useEffect(() => { fetchStats(); },  [fetchStats]);
+
+  // ── CRUD ────────────────────────────────────────────────────────────────────
+
+  const handleAdd = async () => {
+    setSaving(true); setError("");
+    try {
+      const body = { ...form, experience: Number(form.experience), rating: Number(form.rating) };
+      const res  = await fetch(BASE, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      setShowAdd(false); setForm(EMPTY_FORM);
+      fetchDoctors(); fetchStats();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleEdit = async () => {
+    if (!editDoc) return;
+    setSaving(true); setError("");
+    try {
+      const body = { ...form, experience: Number(form.experience), rating: Number(form.rating) };
+      const res  = await fetch(`${BASE}/${editDoc._id}`, { method: "PUT", headers, body: JSON.stringify(body) });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      setEditDoc(null); setForm(EMPTY_FORM);
+      fetchDoctors(); fetchStats();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDoc) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${BASE}/${deleteDoc._id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error("Delete failed");
+      setDeleteDoc(null);
+      fetchDoctors(); fetchStats();
+    } catch (e: any) { setError(e.message); }
+    finally { setDeleting(false); }
+  };
+
+  const openEdit = (doc: Doctor) => {
+    setForm({
+      fullName: doc.fullName, email: doc.email, phone: doc.phone,
+      specialization: doc.specialization, department: doc.department,
+      hospitalName: doc.hospitalName ?? "", experience: String(doc.experience),
+      rating: String(doc.rating), status: doc.status, gender: doc.gender ?? "Male",
+    });
+    setEditDoc(doc);
+  };
+
+  const openAdd = () => { setForm(EMPTY_FORM); setShowAdd(true); };
+  const setField = (k: keyof FormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // ── Checkbox ────────────────────────────────────────────────────────────────
+
+  const allChecked = doctors.length > 0 && doctors.every((d) => selected.has(d._id));
+  const toggleAll  = () => {
+    if (allChecked) setSelected((s) => { const n = new Set(s); doctors.forEach((d) => n.delete(d._id)); return n; });
+    else            setSelected((s) => { const n = new Set(s); doctors.forEach((d) => n.add(d._id)); return n; });
+  };
+  const toggleOne = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+
+  const exportCSV = () => {
+    const rows = [
+      ["Name", "Email", "Phone", "Specialization", "Department", "Hospital", "Experience", "Rating", "Status"],
+      ...doctors.map((d) => [d.fullName, d.email, d.phone, d.specialization, d.department, d.hospitalName ?? "", d.experience, d.rating, d.status]),
+    ];
+    const csv  = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a"); a.href = url; a.download = "doctors.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  const inputStyle: React.CSSProperties = { border: "none", outline: "none", flex: 1, fontSize: "13px", color: "#334155", background: "transparent" };
 
   return (
     <div style={{ padding: "24px", fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: "#F8FAFC" }}>
-      {/* Header row */}
+
+      {/* Error */}
+      {error && (
+        <div style={{ marginBottom: "16px", padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "8px", color: "#DC2626", fontSize: "13px", fontWeight: 600, display: "flex", justifyContent: "space-between" }}>
+          {error}
+          <button onClick={() => setError("")} style={{ border: "none", background: "none", cursor: "pointer", color: "#DC2626" }}>✕</button>
+        </div>
+      )}
+
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "14px" }}>
         <div>
           <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#0F172A", margin: 0 }}>Doctor Management</h1>
-          <p style={{ color: "#64748B", margin: "4px 0 0 0", fontSize: "14px" }}>
-            Manage and monitor hospital medical staff across the network.
-          </p>
+          <p style={{ color: "#64748B", margin: "4px 0 0", fontSize: "14px" }}>Manage and monitor hospital medical staff across the network.</p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <SquareIconButton>
-            <RefreshIcon />
-          </SquareIconButton>
-          <PillButton>
-            <FilterIcon /> Filter
-          </PillButton>
-          <PillButton>
-            <ExportIcon /> Export
-          </PillButton>
-          <button
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "9px 16px",
-              backgroundColor: "#2563EB",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
-            <span style={{ fontSize: "15px", lineHeight: 1 }}>+</span> Add Doctor
+          <button onClick={fetchDoctors} style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #CBD5E1", borderRadius: "8px", background: "white", cursor: "pointer", color: "#475569" }}>↻</button>
+          <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", border: "1px solid #CBD5E1", borderRadius: "8px", background: "white", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "#334155" }}>
+            ↑ Export
+          </button>
+          <button onClick={openAdd} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", backgroundColor: "#2563EB", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "14px" }}>
+            + Add Doctor
           </button>
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px", marginBottom: "18px" }}>
-        <StatCard icon={<UsersIcon />} iconBg="#DBEAFE" iconColor="#2563EB" value="342" label="Total Medical Staff" badge="↗ +12" badgeColor="#16A34A" />
-        <StatCard icon={<CheckCircleIcon />} iconBg="#DCFCE7" iconColor="#16A34A" value="298" label="Active Practitioners" badge="87% ACTIVE" badgeColor="#16A34A" />
-        <StatCard icon={<StethoscopeIcon />} iconBg="#DCFCE7" iconColor="#16A34A" value="156" valueColor="#16A34A" label="Specialists on File" />
-        <StatCard icon={<CalendarCheckIcon />} iconBg="#DCFCE7" iconColor="#16A34A" value="84" valueColor="#16A34A" label="Available Today" />
-        <StatCard icon={<UserOffIcon />} iconBg="#FEE2E2" iconColor="#DC2626" value="12" valueColor="#DC2626" label="Staff on Leave" />
+        {[
+          { label: "Total Staff",      value: stats?.total     ?? 0, bg: "#DBEAFE", color: "#2563EB" },
+          { label: "Active",           value: stats?.active    ?? 0, bg: "#DCFCE7", color: "#16A34A" },
+          { label: "On Leave",         value: stats?.onLeave   ?? 0, bg: "#F1F5F9", color: "#475569" },
+          { label: "Emergency",        value: stats?.emergency ?? 0, bg: "#FEE2E2", color: "#DC2626" },
+          { label: "Avg Rating",       value: stats?.avgRating ?? 0, bg: "#FEF3C7", color: "#D97706" },
+        ].map((s) => (
+          <div key={s.label} style={{ backgroundColor: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "14px 16px" }}>
+            <div style={{ width: "32px", height: "32px", borderRadius: "9px", backgroundColor: s.bg, color: s.color, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "10px", fontSize: "14px", fontWeight: 700 }}>
+              {String(s.value)[0]}
+            </div>
+            <div style={{ fontSize: "24px", fontWeight: 700, color: "#0F172A", lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: "12px", color: "#64748B", marginTop: "5px" }}>{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Search row */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginBottom: "16px",
-          backgroundColor: "white",
-          padding: "10px",
-          borderRadius: "10px",
-          border: "1px solid #E2E8F0",
-        }}
-      >
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", padding: "2px 10px" }}>
-          <SearchIcon />
+      {/* Search + Filters */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: "220px", display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", backgroundColor: "white", border: "1px solid #E2E8F0", borderRadius: "10px" }}>
+          <span style={{ color: "#94A3B8" }}>🔍</span>
           <input
-            placeholder="Search by name, license ID, or specialty..."
-            style={{ border: "none", outline: "none", flex: 1, fontSize: "14px", color: "#334155", background: "transparent" }}
+            placeholder="Search by name, email, or specialty..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            style={inputStyle}
           />
         </div>
-        <PillButton>
-          <SlidersIcon /> Advanced Search
-        </PillButton>
+        <select value={statusFilter} onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+          style={{ height: "38px", padding: "0 10px", border: "1px solid #E2E8F0", borderRadius: "8px", fontSize: "13px", fontWeight: 600, color: "#334155", background: "white", cursor: "pointer" }}>
+          {["All", ...STATUSES].map((s) => <option key={s}>{s === "All" ? "Status: All" : s}</option>)}
+        </select>
+        <select value={deptFilter} onChange={(e) => { setDept(e.target.value); setPage(1); }}
+          style={{ height: "38px", padding: "0 10px", border: "1px solid #E2E8F0", borderRadius: "8px", fontSize: "13px", fontWeight: 600, color: "#334155", background: "white", cursor: "pointer" }}>
+          {["All", ...DEPARTMENTS].map((d) => <option key={d}>{d === "All" ? "Dept: All" : d}</option>)}
+        </select>
       </div>
 
       {/* Table */}
       <div style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #E2E8F0", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "820px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "860px" }}>
             <thead>
               <tr style={{ backgroundColor: "#F1F5F9", borderBottom: "1px solid #E2E8F0" }}>
-                <Th width="40px">
-                  <input type="checkbox" />
-                </Th>
-                <Th>Practitioner ID</Th>
-                <Th>Practitioner Info</Th>
-                <Th>Assigned Hospital</Th>
-                <Th>Phone/Contact</Th>
-                <Th>Verification Status</Th>
-                <Th align="right">Management Actions</Th>
+                {["", "ID", "Doctor Info", "Department", "Hospital", "Phone", "Exp", "Rating", "Status", "Actions"].map((h, i) => (
+                  <th key={i} style={{ padding: "11px 14px", color: "#475569", fontWeight: 600, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.03em", whiteSpace: "nowrap", textAlign: h === "Actions" ? "right" : "left" }}>
+                    {h === "" ? <input type="checkbox" checked={allChecked} onChange={toggleAll} /> : h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {DOCTORS.map((doc) => (
-                <tr key={doc.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  <Td>
-                    <input type="checkbox" />
-                  </Td>
-                  <Td>
-                    <span style={{ fontWeight: 600, color: "#0F172A", fontSize: "14px" }}>{doc.id}</span>
-                  </Td>
-                  <Td>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div
-                        style={{
-                          width: "34px",
-                          height: "34px",
-                          borderRadius: "50%",
-                          backgroundColor: doc.avatarBg,
-                          color: doc.avatarText,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {doc.initials}
+              {loading ? (
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: "40px", color: "#94A3B8", fontSize: "14px" }}>Loading doctors...</td></tr>
+              ) : doctors.length === 0 ? (
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: "40px", color: "#94A3B8", fontSize: "14px" }}>No doctors found</td></tr>
+              ) : doctors.map((doc) => {
+                const avatar = getAvatarColor(doc.fullName);
+                return (
+                  <tr key={doc._id} style={{ borderBottom: "1px solid #F1F5F9", backgroundColor: selected.has(doc._id) ? "#EFF6FF" : "white" }}>
+                    <td style={{ padding: "12px 14px" }}><input type="checkbox" checked={selected.has(doc._id)} onChange={() => toggleOne(doc._id)} /></td>
+                    <td style={{ padding: "12px 14px", fontWeight: 600, color: "#64748B", fontSize: "12px" }}>#{doc._id.slice(-6).toUpperCase()}</td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ width: "34px", height: "34px", borderRadius: "50%", backgroundColor: avatar.bg, color: avatar.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700, flexShrink: 0 }}>
+                          {getInitials(doc.fullName)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: "#0F172A", fontSize: "14px" }}>{doc.fullName}</div>
+                          <div style={{ fontSize: "12px", color: "#64748B" }}>{doc.specialization}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "#0F172A", fontSize: "14px" }}>{doc.name}</div>
-                        <div style={{ fontSize: "12px", color: "#64748B" }}>{doc.specialty}</div>
+                    </td>
+                    <td style={{ padding: "12px 14px", fontSize: "13px", color: "#334155" }}>{doc.department}</td>
+                    <td style={{ padding: "12px 14px", fontSize: "13px", color: "#334155" }}>{doc.hospitalName ?? "—"}</td>
+                    <td style={{ padding: "12px 14px", fontSize: "13px", color: "#334155" }}>{doc.phone}</td>
+                    <td style={{ padding: "12px 14px", fontSize: "13px", color: "#334155" }}>{doc.experience}yr</td>
+                    <td style={{ padding: "12px 14px", fontSize: "13px", color: "#D97706", fontWeight: 700 }}>★ {doc.rating}</td>
+                    <td style={{ padding: "12px 14px" }}><StatusBadge status={doc.status} /></td>
+                    <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                        <button onClick={() => setViewDoc(doc)} title="View" style={{ border: "none", background: "none", cursor: "pointer", color: "#2563EB", fontSize: "15px" }}>👁</button>
+                        <button onClick={() => openEdit(doc)} title="Edit" style={{ border: "none", background: "none", cursor: "pointer", color: "#64748B", fontSize: "15px" }}>✏️</button>
+                        <button onClick={() => setDeleteDoc(doc)} title="Delete" style={{ border: "none", background: "none", cursor: "pointer", color: "#DC2626", fontSize: "15px" }}>🗑</button>
                       </div>
-                    </div>
-                  </Td>
-                  <Td>
-                    <span style={{ fontSize: "14px", color: "#334155" }}>{doc.hospital}</span>
-                  </Td>
-                  <Td>
-                    <span style={{ fontSize: "14px", color: "#334155" }}>{doc.phone}</span>
-                  </Td>
-                  <Td>
-                    <span
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "999px",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        letterSpacing: "0.03em",
-                        backgroundColor: doc.status === "verified" ? "#DCFCE7" : "#DBEAFE",
-                        color: doc.status === "verified" ? "#15803D" : "#1D4ED8",
-                      }}
-                    >
-                      {doc.status === "verified" ? "VERIFIED" : "PENDING"}
-                    </span>
-                  </Td>
-                  <Td align="right">
-                    <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                      <ActionIcon>
-                        <EyeIcon />
-                      </ActionIcon>
-                      <ActionIcon>
-                        <EditIcon />
-                      </ActionIcon>
-                      <ActionIcon color="#DC2626">
-                        <TrashIcon />
-                      </ActionIcon>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div
-          style={{
-            padding: "12px 16px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderTop: "1px solid #E2E8F0",
-            backgroundColor: "#FAFAFA",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}
-        >
-          <span style={{ fontSize: "13px", color: "#64748B" }}>Showing 20 of 342 doctors</span>
+        <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #E2E8F0", backgroundColor: "#FAFAFA", flexWrap: "wrap", gap: "12px" }}>
+          <span style={{ fontSize: "13px", color: "#64748B" }}>
+            Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total} doctors
+          </span>
           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <PageButton>Previous</PageButton>
-            <PageButton active={page === 1}>1</PageButton>
-            <PageButton>2</PageButton>
-            <PageButton>3</PageButton>
-            <PageButton>Next</PageButton>
+            <PageBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</PageBtn>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+              <PageBtn key={p} active={p === page} onClick={() => setPage(p)}>{p}</PageBtn>
+            ))}
+            {totalPages > 5 && <span style={{ fontSize: "13px", color: "#94A3B8" }}>...</span>}
+            <PageBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</PageBtn>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {viewDoc  && <ViewDoctorModal doctor={viewDoc} onClose={() => setViewDoc(null)} />}
+      {showAdd  && (
+        <Modal title="Add New Doctor" onClose={() => setShowAdd(false)}>
+          <DoctorForm form={form} onChange={setField} onSubmit={handleAdd} onCancel={() => setShowAdd(false)} saving={saving} submitLabel="Add Doctor" />
+        </Modal>
+      )}
+      {editDoc  && (
+        <Modal title="Edit Doctor" onClose={() => setEditDoc(null)}>
+          <DoctorForm form={form} onChange={setField} onSubmit={handleEdit} onCancel={() => setEditDoc(null)} saving={saving} submitLabel="Save Changes" />
+        </Modal>
+      )}
+      {deleteDoc && <DeleteModal name={deleteDoc.fullName} onClose={() => setDeleteDoc(null)} onConfirm={handleDelete} deleting={deleting} />}
     </div>
   );
 }
 
-/* ============================================================
-   Presentational helpers
-   ============================================================ */
+// ── Pagination Button ─────────────────────────────────────────────────────────
 
-function StatCard({
-  icon,
-  iconBg,
-  iconColor,
-  value,
-  label,
-  badge,
-  badgeColor,
-  valueColor,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  value: string;
-  label: string;
-  badge?: string;
-  badgeColor?: string;
-  valueColor?: string;
-}) {
-  return (
-    <div style={{ backgroundColor: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "14px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "9px",
-            backgroundColor: iconBg,
-            color: iconColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {icon}
-        </div>
-        {badge && <span style={{ fontSize: "11px", fontWeight: 700, color: badgeColor }}>{badge}</span>}
-      </div>
-      <div style={{ fontSize: "24px", fontWeight: 700, color: valueColor || "#0F172A", lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: "12px", color: "#64748B", marginTop: "5px" }}>{label}</div>
-    </div>
-  );
-}
-
-function Th({ children, width, align }: { children: React.ReactNode; width?: string; align?: "left" | "right" }) {
-  return (
-    <th
-      style={{
-        padding: "11px 16px",
-        color: "#475569",
-        fontWeight: 600,
-        fontSize: "11px",
-        textTransform: "uppercase",
-        letterSpacing: "0.03em",
-        width,
-        textAlign: align || "left",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, align }: { children: React.ReactNode; align?: "left" | "right" }) {
-  return <td style={{ padding: "13px 16px", textAlign: align || "left" }}>{children}</td>;
-}
-
-function ActionIcon({ children, color }: { children: React.ReactNode; color?: string }) {
-  return (
-    <button style={{ border: "none", background: "none", cursor: "pointer", color: color || "#64748B", display: "flex", alignItems: "center" }}>
-      {children}
-    </button>
-  );
-}
-
-function PageButton({ children, active }: { children: React.ReactNode; active?: boolean }) {
+function PageBtn({ children, active, disabled, onClick }: { children: React.ReactNode; active?: boolean; disabled?: boolean; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
+      disabled={disabled}
       style={{
-        padding: "6px 12px",
-        border: `1px solid ${active ? "#2563EB" : "#CBD5E1"}`,
-        borderRadius: "6px",
-        backgroundColor: active ? "#2563EB" : "white",
-        color: active ? "white" : "#334155",
-        cursor: "pointer",
-        fontSize: "13px",
-        fontWeight: active ? 600 : 500,
-        minWidth: "34px",
+        padding: "6px 12px", border: `1px solid ${active ? "#2563EB" : "#CBD5E1"}`,
+        borderRadius: "6px", backgroundColor: active ? "#2563EB" : "white",
+        color: active ? "white" : "#334155", cursor: disabled ? "not-allowed" : "pointer",
+        fontSize: "13px", fontWeight: active ? 600 : 500, opacity: disabled ? 0.4 : 1, minWidth: "34px",
       }}
     >
       {children}
     </button>
-  );
-}
-
-function PillButton({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "8px 14px",
-        border: "1px solid #CBD5E1",
-        borderRadius: "8px",
-        backgroundColor: "white",
-        cursor: "pointer",
-        fontSize: "13px",
-        fontWeight: 500,
-        color: "#334155",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SquareIconButton({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      style={{
-        width: "36px",
-        height: "36px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "1px solid #CBD5E1",
-        borderRadius: "8px",
-        backgroundColor: "white",
-        cursor: "pointer",
-        color: "#475569",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/* ============================================================
-   Inline icon set
-   ============================================================ */
-
-const ip = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-
-function SearchIcon() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <path d="M21 21l-4.35-4.35" />
-    </svg>
-  );
-}
-function RefreshIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-      <path d="M21 4v5h-5" />
-    </svg>
-  );
-}
-function FilterIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-    </svg>
-  );
-}
-function ExportIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M12 3v12" />
-      <path d="M7 8l5-5 5 5" />
-      <path d="M5 21h14" />
-    </svg>
-  );
-}
-function SlidersIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M4 21v-7" />
-      <path d="M4 10V3" />
-      <path d="M12 21v-9" />
-      <path d="M12 8V3" />
-      <path d="M20 21v-5" />
-      <path d="M20 12V3" />
-      <path d="M1 14h6" />
-      <path d="M9 8h6" />
-      <path d="M17 16h6" />
-    </svg>
-  );
-}
-function UsersIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-function CheckCircleIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="M22 4L12 14.01l-3-3" />
-    </svg>
-  );
-}
-function StethoscopeIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6" />
-      <path d="M8 15a6 6 0 0 0 6-6V7" />
-      <circle cx="20" cy="10" r="2" />
-      <path d="M20 12v3a4 4 0 0 1-8 0" />
-    </svg>
-  );
-}
-function CalendarCheckIcon() {
-  return (
-    <svg {...ip}>
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4" />
-      <path d="M8 2v4" />
-      <path d="M3 10h18" />
-      <path d="M9 16l2 2 4-4" />
-    </svg>
-  );
-}
-function UserOffIcon() {
-  return (
-    <svg {...ip}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
-  );
-}
-function EyeIcon() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-function EditIcon() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-function TrashIcon() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-    </svg>
   );
 }
