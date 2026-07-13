@@ -12,6 +12,8 @@ import {
 
 const router = Router();
 
+// Debug logs removed
+
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
