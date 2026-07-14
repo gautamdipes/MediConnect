@@ -3,6 +3,19 @@ import { MedicalRecordService } from "../services/medical-record.service";
 
 const service = new MedicalRecordService();
 
+function getRefId(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value !== null && "_id" in value) {
+    return String((value as { _id: unknown })._id);
+  }
+  return String(value);
+}
+
+function canManageRecord(record: { patientId?: unknown; doctorId?: unknown }, userId: string) {
+  return getRefId(record.patientId) === String(userId) || getRefId(record.doctorId) === String(userId);
+}
+
 export const getMedicalRecords = async (req: Request, res: Response) => {
   try {
     const patientId = (req as any).user?.userId;
@@ -85,11 +98,18 @@ export const updateMedicalRecord = async (req: Request<{ id: string }>, res: Res
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const existing = await service.getMedicalRecordById(req.params.id);
-    if (existing.patientId.toString() !== userId && existing.doctorId?.toString() !== userId) {
+    if (!canManageRecord(existing, userId)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     const data = { ...req.body };
+    // Strip fields that must not be overwritten from client FormData
+    delete data.patientId;
+    delete data.doctorId;
+    delete data.hospitalId;
+    delete data._id;
+    delete data.id;
+
     if (req.file) {
       data.attachments = [`/uploads/${req.file.filename}`];
       const ext = req.file.originalname.split('.').pop()?.toUpperCase();
@@ -112,7 +132,7 @@ export const deleteMedicalRecord = async (req: Request<{ id: string }>, res: Res
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const existing = await service.getMedicalRecordById(req.params.id);
-    if (existing.patientId.toString() !== userId && existing.doctorId?.toString() !== userId) {
+    if (!canManageRecord(existing, userId)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
