@@ -73,15 +73,21 @@ function BookModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.date || !form.time) return setError("Date and time are required");
+    if (!form.doctorId) return setError("Please select a doctor");
     setLoading(true);
     setError("");
     try {
       const selected = doctors.find((d) => d._id === form.doctorId);
       const selectedHosp = hospitals.find((h) => h._id === form.hospitalId);
       await api.post("/v1/users/appointments", {
-        ...form,
+        date: form.date,
+        time: form.time,
+        reason: form.reason,
+        doctorId: form.doctorId,
         doctorName: selected?.fullName,
-        hospitalName: selectedHosp?.hospitalName,
+        ...(form.hospitalId
+          ? { hospitalId: form.hospitalId, hospitalName: selectedHosp?.hospitalName }
+          : {}),
       });
       onBooked();
       onClose();
@@ -102,24 +108,12 @@ function BookModal({
             Doctor
             <select
               value={form.doctorId}
-              onChange={(e) => {
-                const selectedDoctorId = e.target.value;
-                const doc = doctors.find(d => d._id === selectedDoctorId);
-                setForm({ 
-                  ...form, 
-                  doctorId: selectedDoctorId,
-                  // Auto-fill hospital if doctor is linked to one
-                  hospitalId: doc?.hospitalId ? doc.hospitalId : form.hospitalId 
-                });
-              }}
+              onChange={(e) => setForm({ ...form, doctorId: e.target.value })}
               className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:border-blue-500 focus:bg-white"
             >
               <option value="">-- Choose Doctor --</option>
-              {doctors
-                // If a hospital is selected, only show doctors from that hospital
-                .filter(d => form.hospitalId ? d.hospitalId === form.hospitalId : true)
-                .map((d) => (
-                  <option key={d._id} value={d._id}>{d.fullName} ({d.specialization})</option>
+              {doctors.map((d) => (
+                <option key={d._id} value={d._id}>{d.fullName} ({d.specialization})</option>
               ))}
             </select>
           </label>
@@ -127,19 +121,7 @@ function BookModal({
             Hospital
             <select
               value={form.hospitalId}
-              onChange={(e) => {
-                const newHospitalId = e.target.value;
-                setForm(prev => {
-                  // If current doctor doesn't belong to the new hospital, clear the doctor selection
-                  const currentDoc = doctors.find(d => d._id === prev.doctorId);
-                  const shouldClearDoctor = currentDoc && currentDoc.hospitalId !== newHospitalId;
-                  return {
-                    ...prev,
-                    hospitalId: newHospitalId,
-                    doctorId: shouldClearDoctor ? "" : prev.doctorId
-                  };
-                });
-              }}
+              onChange={(e) => setForm({ ...form, hospitalId: e.target.value })}
               className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:border-blue-500 focus:bg-white"
             >
               <option value="">-- Choose Hospital --</option>
@@ -227,12 +209,12 @@ export default function AppointmentsPage() {
       setLoading(true);
       const [apptsRes, docRes, hospRes, statsRes] = await Promise.all([
         api.get("/v1/users/appointments?limit=20"),
-        api.get("/v1/users/doctors?limit=5"),
-        api.get("/v1/users/hospitals?limit=3"),
+        api.get("/v1/users/doctors?limit=50&status=ACTIVE"),
+        api.get("/v1/users/hospitals?limit=50"),
         api.get("/v1/users/dashboard"),
       ]);
       setAppointments(apptsRes.data?.appointments || []);
-      setDoctors(docRes.data?.doctors || []);
+      setDoctors(docRes.data?.data || []);
       setHospitals(hospRes.data?.hospitals || []);
       setStats(statsRes.data?.stats || null);
     } catch (error) {

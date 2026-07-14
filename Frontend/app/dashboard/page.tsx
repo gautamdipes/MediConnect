@@ -140,15 +140,21 @@ function BookModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.date || !form.time) return setError("Date and time are required");
+    if (!form.doctorId) return setError("Please select a doctor");
     setLoading(true);
     setError("");
     try {
       const selected = doctors.find((d) => d._id === form.doctorId);
       const selectedHosp = hospitals.find((h) => h._id === form.hospitalId);
       await api.post("/v1/users/appointments", {
-        ...form,
+        date: form.date,
+        time: form.time,
+        reason: form.reason,
+        doctorId: form.doctorId,
         doctorName: selected?.fullName,
-        hospitalName: selectedHosp?.hospitalName,
+        ...(form.hospitalId
+          ? { hospitalId: form.hospitalId, hospitalName: selectedHosp?.hospitalName }
+          : {}),
       });
       onBooked();
       onClose();
@@ -182,30 +188,20 @@ function BookModal({
 
           {/* Doctor select */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Doctor (optional)</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Doctor</label>
             <div className="relative">
               <Stethoscope size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
                 value={form.doctorId}
-                onChange={(e) => {
-                  const selectedDoctorId = e.target.value;
-                  const doc = doctors.find(d => d._id === selectedDoctorId);
-                  setForm({ 
-                    ...form, 
-                    doctorId: selectedDoctorId,
-                    hospitalId: doc?.hospitalId ? doc.hospitalId : form.hospitalId 
-                  });
-                }}
+                onChange={(e) => setForm({ ...form, doctorId: e.target.value })}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
               >
                 <option value="">Select a doctor</option>
-                {doctors
-                  .filter(d => form.hospitalId ? d.hospitalId === form.hospitalId : true)
-                  .map((d) => (
-                    <option key={d._id} value={d._id}>
-                      {d.fullName} — {d.specialization}
-                    </option>
-                  ))}
+                {doctors.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.fullName} — {d.specialization}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -217,18 +213,7 @@ function BookModal({
               <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
                 value={form.hospitalId}
-                onChange={(e) => {
-                  const newHospitalId = e.target.value;
-                  setForm(prev => {
-                    const currentDoc = doctors.find(d => d._id === prev.doctorId);
-                    const shouldClearDoctor = currentDoc && currentDoc.hospitalId !== newHospitalId;
-                    return {
-                      ...prev,
-                      hospitalId: newHospitalId,
-                      doctorId: shouldClearDoctor ? "" : prev.doctorId
-                    };
-                  });
-                }}
+                onChange={(e) => setForm({ ...form, hospitalId: e.target.value })}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
               >
                 <option value="">Select a hospital</option>
@@ -371,13 +356,13 @@ export default function DashboardPage() {
       const [dashRes, apptRes, docRes, hospRes, recRes] = await Promise.all([
         api.get("/v1/users/dashboard"),
         api.get("/v1/users/appointments?limit=20"),
-        api.get("/v1/users/doctors?limit=6&status=ACTIVE"),
-        api.get("/v1/users/hospitals?limit=4"),
+        api.get("/v1/users/doctors?limit=50&status=ACTIVE"),
+        api.get("/v1/users/hospitals?limit=50"),
         api.get("/v1/users/medical-records?limit=4"),
       ]);
       setDashData(dashRes.data);
       setAppointments(apptRes.data?.appointments || []);
-      setDoctors(docRes.data?.doctors || []);
+      setDoctors(docRes.data?.data || []);
       setHospitals(hospRes.data?.hospitals || []);
       setRecentRecords(recRes.data?.records || []);
     } catch (e) {

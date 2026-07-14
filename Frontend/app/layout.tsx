@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
+import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
+import { AuthContextProvider } from "@/app/dashboard/context/AuthContext";
+
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const sans = Manrope({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "MediConnect",
-  description: "Clinical workflow and hospital operations platform.",
+  description: "Book doctors, manage appointments, and keep medical records in one place.",
 };
-
-import { AuthContextProvider } from "@/app/dashboard/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -14,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" data-scroll-behavior="smooth" className={`${display.variable} ${sans.variable}`}>
+      <body className="font-[family-name:var(--font-sans)] antialiased">
         <AuthContextProvider>
           {children}
         </AuthContextProvider>

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -42,8 +43,15 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6]">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-[#0057d9] mb-2">Mediconnect</h1>
-        <p className="text-gray-500 text-sm mb-6">Admin Portal — Sign in to continue</p>
+        <div className="mb-6">
+          <BrandLogo
+            size={44}
+            showText
+            subtitle="Admin Portal — Sign in to continue"
+            textClassName="text-2xl font-bold text-[#0057d9]"
+            subtitleClassName="text-gray-500 text-sm mt-1"
+          />
+        </div>
 
         {error && (
           <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">

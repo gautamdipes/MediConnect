@@ -28,6 +28,7 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 // ── Notification Item ─────────────────────────────────────────────────────────
 interface NotificationItem {
@@ -719,16 +720,14 @@ export default function AdminLayout({
       <aside className="w-[240px] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-300">
         <div>
           {/* Logo */}
-          <div className="p-5 flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#0057d9] rounded-[11px] flex items-center justify-center text-white shadow-[0_4px_12px_rgba(0,87,217,0.25)]">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 6V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v1H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-4zm-6-1h4v1h-4V5zm7 10h-3v3h-2v-3H9v-2h3v-3h2v3h3v2z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white">Mediconnect</h2>
-              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase -mt-0.5">Admin</p>
-            </div>
+          <div className="p-5">
+            <BrandLogo
+              size={36}
+              showText
+              subtitle="Admin"
+              textClassName="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white"
+              subtitleClassName="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase -mt-0.5"
+            />
           </div>
 
           {/* Navigation */}

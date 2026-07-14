@@ -1,433 +1,753 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
+import { api } from "@/lib/proxy";
+import {
+  Building2,
+  CalendarCheck,
+  MapPin,
+  Search,
+  Star,
+  Stethoscope,
+  UserPlus,
+} from "lucide-react";
 
-export default function MediConnectApp() {
+type LandingStats = {
+  hospitals: number;
+  verifiedHospitals: number;
+  doctors: number;
+  activeDoctors: number;
+  appointments: number;
+};
+
+type LandingHospital = {
+  _id: string;
+  hospitalName: string;
+  city: string;
+  state: string;
+  departments?: string[];
+  doctorsCount?: number;
+  rating?: number;
+  emergency?: boolean;
+  type?: string;
+  image?: string;
+};
+
+type LandingDoctor = {
+  _id: string;
+  fullName: string;
+  specialization: string;
+  department: string;
+  hospitalName?: string;
+  experience?: number;
+  rating?: number;
+  profileImage?: string;
+};
+
+function useCountUp(target: number, active: boolean, duration = 1200) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(target * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, active, duration]);
+
+  return value;
+}
+
+function useInView<T extends HTMLElement>(threshold = 0.2) {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
+function StatChip({
+  label,
+  value,
+  active,
+}: {
+  label: string;
+  value: number;
+  active: boolean;
+}) {
+  const count = useCountUp(value, active);
+  return (
+    <div className="min-w-[120px]">
+      <p className="font-[family-name:var(--font-display)] text-[36px] font-medium leading-none text-white sm:text-[42px]">
+        {count}
+        <span className="text-[#7eb6ff]">+</span>
+      </p>
+      <p className="mt-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-white/55">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function mediaUrl(path?: string) {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `http://localhost:5000${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+export default function LandingPage() {
   const router = useRouter();
-  // Navigation State Control: 'dashboard' | 'login' | 'signup'
-  const [currentScreen] = useState<'dashboard' | 'login' | 'signup'>('dashboard');
-  const [showPassword, setShowPassword] = useState(false);
+  const go = (path: string) => router.push(path);
 
-  const navigateTo = (path: string) => {
-    router.push(path);
-  };
+  const [stats, setStats] = useState<LandingStats>({
+    hospitals: 0,
+    verifiedHospitals: 0,
+    doctors: 0,
+    activeDoctors: 0,
+    appointments: 0,
+  });
+  const [hospitals, setHospitals] = useState<LandingHospital[]>([]);
+  const [doctors, setDoctors] = useState<LandingDoctor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const statsView = useInView<HTMLDivElement>(0.35);
+  const hospitalsView = useInView<HTMLElement>(0.12);
+  const doctorsView = useInView<HTMLElement>(0.12);
+  const howView = useInView<HTMLElement>(0.15);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get("/v1/public/landing");
+        if (cancelled) return;
+        setStats(res.data?.stats || stats);
+        setHospitals(res.data?.hospitals || []);
+        setDoctors(res.data?.doctors || []);
+      } catch (err) {
+        console.error("Landing fetch failed", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAFBFD] font-sans text-[#091E42] antialiased">
-      
-      {/* 1. FIXED STANDARD REPLICATED HEADER */}
-      <header className="sticky top-0 z-50 flex h-[80px] w-full items-center justify-between border-b border-[#F0F0F0] bg-white px-[60px] shadow-sm">
-        {/* Logo */}
-        <button 
-          onClick={() => navigateTo("/dashboard")}
-          className="text-[22px] font-bold tracking-tight text-[#091E42] transition hover:opacity-80"
-        >
-          MediConnect
-        </button>
-        
-        {/* Nav Links */}
-        <nav className="flex items-center gap-[40px] text-[15px] font-medium text-[#5E6C84]">
-          <button onClick={() => navigateTo("/dashboard")} className="hover:text-[#0057D9] transition">Hospitals</button>
-          <button onClick={() => navigateTo("/dashboard")} className="hover:text-[#0057D9] transition">Doctors</button>
-          <button onClick={() => navigateTo("/dashboard")} className="hover:text-[#0057D9] transition">About Us</button>
-        </nav>
+    <div className="landing relative min-h-screen overflow-x-hidden bg-white text-[#091E42]">
+      {/* Page atmosphere: white ↔ dark blue mix */}
+      <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
+        <div className="absolute inset-0 bg-[linear-gradient(165deg,#ffffff_0%,#edf4ff_28%,#d6e6fb_52%,#0a1f45_78%,#071428_100%)]" />
+        <div className="absolute -left-24 top-0 h-[520px] w-[520px] rounded-full bg-[#0057d9]/18 blur-[120px]" />
+        <div className="absolute right-[-10%] top-[18%] h-[420px] w-[420px] rounded-full bg-[#003da1]/22 blur-[110px]" />
+        <div className="absolute bottom-[8%] left-[20%] h-[360px] w-[360px] rounded-full bg-white/50 blur-[90px]" />
+      </div>
 
-        {/* Auth Button Action Triggers */}
-        <div className="flex items-center gap-[24px]">
-          <button 
-            onClick={() => navigateTo("/login")} 
-            className={`text-[15px] font-medium transition ${currentScreen === 'login' ? 'text-[#0057D9] font-bold' : 'text-[#344563] hover:text-[#0057D9]'}`}
-          >
-            Log In
-          </button>
+      {/* Header — brand left, nav center, auth right */}
+      <header className="sticky top-0 z-50 border-b border-[#0057d9]/10 bg-white/90 backdrop-blur-md">
+        <div className="relative flex h-14 w-full items-center justify-between px-3 sm:px-4">
           <button
-            onClick={() => navigateTo("/signup")}
-            className="rounded-[6px] bg-[#0057D9] px-[24px] py-[10px] text-[15px] font-semibold text-white transition hover:bg-[#0048B5] shadow-sm active:scale-95"
+            type="button"
+            onClick={() => go("/")}
+            className="relative z-10 flex shrink-0 items-center gap-2 transition hover:opacity-85"
+            aria-label="MediConnect home"
           >
-            SignUp
+            <BrandLogo size={28} />
+            <span className="font-[family-name:var(--font-display)] text-[18px] font-semibold tracking-[-0.02em] text-[#091E42]">
+              MediConnect
+            </span>
           </button>
+
+          <nav className="pointer-events-none absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-center gap-6 md:flex">
+            <a
+              href="#network"
+              className="pointer-events-auto text-[13px] font-semibold text-[#091E42] transition hover:text-[#0057d9]"
+            >
+              Network
+            </a>
+            <a
+              href="#doctors"
+              className="pointer-events-auto text-[13px] font-semibold text-[#091E42] transition hover:text-[#0057d9]"
+            >
+              Doctors
+            </a>
+            <a
+              href="#how"
+              className="pointer-events-auto text-[13px] font-semibold text-[#091E42] transition hover:text-[#0057d9]"
+            >
+              How it works
+            </a>
+          </nav>
+
+          <div className="relative z-10 flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => go("/login")}
+              className="px-2.5 py-1.5 text-[13px] font-semibold text-[#091E42] transition hover:text-[#0057d9]"
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => go("/signup")}
+              className="rounded-md bg-[#0057d9] px-3.5 py-1.5 text-[13px] font-semibold text-white transition hover:bg-[#0048b5]"
+            >
+              Get started
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* VIEWPORT CONTROLLER SWITCH */}
-      <div className="flex-1 flex flex-col justify-between">
-        
-        {/* SCREEN A: PREMIUM NETWORK DASHBOARD */}
-        {currentScreen === 'dashboard' && (
-          <div className="animate-fadeIn flex-1 flex flex-col">
-            {/* Top Stat Banner */}
-            <div className="bg-gradient-to-r from-[#0057D9] to-[#003DA1] text-white text-center py-2.5 px-4 text-xs font-semibold tracking-wider uppercase">
-              🚀 System Notice: Connected to over 1,200+ HIPAA Compliant Data Nodes Nationwide
-            </div>
+      {/* Hero — white + dark blue blend */}
+      <section className="relative isolate overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105 landing-kenburns opacity-40"
+          style={{
+            backgroundImage:
+              "url(https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=2400&q=80)",
+          }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-[linear-gradient(115deg,#ffffff_0%,rgba(237,244,255,0.92)_24%,rgba(0,87,217,0.55)_58%,#071428_100%)]"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-y-0 right-0 w-[55%] bg-[radial-gradient(ellipse_at_right,_rgba(7,20,40,0.55)_0%,transparent_70%)]"
+          aria-hidden
+        />
 
-            {/* Hero Split Layout */}
-            <main className="mx-auto max-w-[1300px] w-full grid lg:grid-cols-12 items-center gap-12 px-[60px] py-[80px]">
-              {/* Left Column Content */}
-              <div className="lg:col-span-7 space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#0057D9]/10 border border-[#0057D9]/20 px-4 py-1.5 text-xs font-bold text-[#0057D9]">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Interoperability Engine Active
-                </div>
-                <h1 className="text-[48px] sm:text-[56px] font-black tracking-tight text-[#091E42] leading-[1.1]">
-                  The future of <br />
-                  <span className="bg-gradient-to-r from-[#0057D9] to-[#00A3FF] bg-clip-text text-transparent">
-                    clinical efficiency.
-                  </span>
-                </h1>
-                <p className="text-[17px] leading-[1.75] text-[#5E6C84] max-w-[560px]">
-                  Streamline patient care and administrative workflows with our secure, HIPAA-compliant clinical operating system. Connect provider directories, real-time hospital open capacity metrics, and universal diagnostic charts instantly.
-                </p>
+        <div className="relative mx-auto flex min-h-[calc(100dvh-56px)] max-w-[1200px] flex-col justify-center px-6 py-20 md:px-10">
+          <p className="landing-fade text-[12px] font-bold uppercase tracking-[0.2em] text-[#0057d9]">
+            MediConnect Clinical Network
+          </p>
+          <h1 className="landing-rise mt-5 max-w-[13ch] font-[family-name:var(--font-display)] text-[48px] font-medium leading-[1.04] tracking-[-0.03em] text-[#091E42] sm:text-[64px] lg:text-[76px]">
+            Care that{" "}
+            <span className="bg-[linear-gradient(90deg,#0057d9,#003da1)] bg-clip-text text-transparent">
+              stays connected.
+            </span>
+          </h1>
+          <p className="landing-fade-delay mt-6 max-w-[40ch] text-[17px] leading-[1.7] text-[#3d4f6a] sm:text-[18px]">
+            Book trusted doctors, choose verified hospitals, and manage your visits in one secure place.
+          </p>
 
-                {/* Primary Landing Page CTAs */}
-                <div className="pt-4 flex flex-wrap gap-4">
-                  <button 
-                    onClick={() => navigateTo("/signup")}
-                    className="rounded-lg bg-[#0057D9] text-white px-8 py-4 font-bold shadow-lg shadow-blue-500/10 transition hover:bg-[#0048B5] hover:shadow-xl"
-                  >
-                    Deploy Institution Node
-                  </button>
-                  <button 
-                    onClick={() => navigateTo("/login")}
-                    className="rounded-lg border border-[#D9D9D9] bg-white text-[#344563] px-8 py-4 font-bold transition hover:bg-gray-50"
-                  >
-                    Access Portal
-                  </button>
-                </div>
-              </div>
-
-              {/* Right Column Interactive Dynamic UI Showcase */}
-              <div className="lg:col-span-5 relative flex justify-center">
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent blur-[100px] rounded-full" />
-                <div className="relative w-full max-w-[420px] bg-white border border-[#F0F0F0] rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] p-6 space-y-6 overflow-hidden">
-                  
-                  {/* Decorative Radar Ring Top */}
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Live Infrastructure</h4>
-                      <p className="text-sm font-bold text-[#091E42]">Emergency Network Load</p>
-                    </div>
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                  </div>
-
-                  {/* Fact Card 1 */}
-                  <div className="flex items-center gap-4 bg-[#FAFBCD]/40 border border-[#F2E8F0] p-3.5 rounded-xl transition hover:scale-[1.02]">
-                    <div className="text-2xl">⏳</div>
-                    <div>
-                      <h5 className="text-[15px] font-bold text-[#091E42]">-34% ER Wait Times</h5>
-                      <p className="text-xs text-[#5E6C84]">Average patient triage processing acceleration metric.</p>
-                    </div>
-                  </div>
-
-                  {/* Fact Card 2 */}
-                  <div className="flex items-center gap-4 bg-blue-50/50 border border-blue-100 p-3.5 rounded-xl transition hover:scale-[1.02]">
-                    <div className="text-2xl">⚡</div>
-                    <div>
-                      <h5 className="text-[15px] font-bold text-[#091E42]">200ms Telemetry Sync</h5>
-                      <p className="text-xs text-[#5E6C84]">Real-time hospital bed registry system update interval.</p>
-                    </div>
-                  </div>
-
-                  {/* Fact Card 3 */}
-                  <div className="flex items-center gap-4 bg-emerald-50/50 border border-emerald-100 p-3.5 rounded-xl transition hover:scale-[1.02]">
-                    <div className="text-2xl">🔐</div>
-                    <div>
-                      <h5 className="text-[15px] font-bold text-[#091E42]">SOC2 Type II Secure</h5>
-                      <p className="text-xs text-[#5E6C84]">Military-grade cryptography wrapping clinical records.</p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </main>
+          <div className="landing-fade-delay mt-10 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => go("/signup")}
+              className="rounded-lg bg-[#0057d9] px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(0,87,217,0.28)] transition hover:bg-[#0048b5]"
+            >
+              Create account
+            </button>
+            <button
+              type="button"
+              onClick={() => go("/login")}
+              className="rounded-lg border border-[#0057d9]/25 bg-white/80 px-7 py-3.5 text-[15px] font-semibold text-[#091E42] backdrop-blur-sm transition hover:border-[#0057d9]/45 hover:bg-white"
+            >
+              Sign in to portal
+            </button>
           </div>
-        )}
 
-        {/* SCREEN B: PREMIUM LOGIN PORTAL */}
-        {currentScreen === 'login' && (
-          <main className="animate-fadeIn flex-1 flex items-center justify-center py-[60px] px-4">
-            <div className="flex w-full max-w-[1160px] h-[720px] bg-white rounded-[16px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden border border-[#F0F0F0]">
-              
-              {/* Left Side: Brand Marketing Panel */}
-              <div className="relative hidden md:flex w-[48%] flex-col justify-between bg-gradient-to-b from-[#005EDD] to-[#003DA1] p-[60px] text-white">
-                <div className="flex items-center gap-[8px] text-[12px] font-bold tracking-widest uppercase opacity-80">
-                  🌐 Enterprise Healthcare
-                </div>
+          <div
+            ref={statsView.ref}
+            className="landing-fade-late mt-16 flex flex-wrap gap-8 border-t border-[#0057d9]/15 pt-8 sm:gap-12"
+          >
+            <div className="rounded-2xl border border-white/40 bg-[#071428]/88 px-6 py-5 backdrop-blur-sm sm:min-w-[140px]">
+              <StatChip
+                label="Hospitals"
+                value={stats.hospitals}
+                active={statsView.inView && !loading}
+              />
+            </div>
+            <div className="rounded-2xl border border-white/40 bg-[#071428]/88 px-6 py-5 backdrop-blur-sm sm:min-w-[140px]">
+              <StatChip
+                label="Active doctors"
+                value={stats.activeDoctors || stats.doctors}
+                active={statsView.inView && !loading}
+              />
+            </div>
+            <div className="rounded-2xl border border-white/40 bg-[#071428]/88 px-6 py-5 backdrop-blur-sm sm:min-w-[140px]">
+              <StatChip
+                label="Appointments"
+                value={stats.appointments}
+                active={statsView.inView && !loading}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
-                <div className="mb-[40px] space-y-4">
-                  <h1 className="text-[42px] font-bold leading-[1.15] tracking-tight">
-                    Welcome back
-                  </h1>
-                  <p className="text-[15px] leading-[1.6] text-blue-100 max-w-[380px] font-light">
-                    Access your clinical dashboard and patient data with enterprise-grade security layers.
-                  </p>
-                </div>
-                
-                <div className="text-[11px] font-mono text-blue-200/50">Protected via end-to-end transport layer security.</div>
-              </div>
+      {/* Network */}
+      <section
+        id="network"
+        ref={hospitalsView.ref}
+        className="scroll-mt-24 relative overflow-hidden"
+      >
+        <div
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#ffffff_0%,#f3f7fd_40%,#e8f0fb_100%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -right-20 top-24 h-72 w-72 rounded-full bg-[#0057d9]/10 blur-[100px]"
+          aria-hidden
+        />
 
-              {/* Right Side: Login Form */}
-              <div className="flex flex-1 flex-col justify-center px-[40px] lg:px-[70px] py-[40px] bg-white">
-                <h2 className="text-[32px] font-bold tracking-tight text-[#171717]">
-                  Login Portal
-                </h2>
-                <p className="mt-[6px] text-[14px] text-[#7B7B7B]">
-                  Enter your credentials to continue
+        <div className="relative mx-auto max-w-[1200px] px-6 py-24 md:px-10">
+          <div
+            className={`flex flex-col gap-6 md:flex-row md:items-end md:justify-between transition-all duration-700 ${
+              hospitalsView.inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            }`}
+          >
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#0057d9]">
+                Network
+              </p>
+              <h2 className="mt-3 max-w-[16ch] font-[family-name:var(--font-display)] text-[36px] font-medium leading-[1.12] tracking-[-0.02em] text-[#091E42] sm:text-[44px]">
+                Hospitals on MediConnect
+              </h2>
+              <p className="mt-4 max-w-[42ch] text-[15px] leading-[1.7] text-[#5E6C84]">
+                Browse live facilities connected to your care network
+                {stats.verifiedHospitals > 0
+                  ? ` — ${stats.verifiedHospitals} verified locations.`
+                  : "."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => go("/signup")}
+              className="self-start rounded-lg border border-[#0057d9]/25 bg-white px-5 py-2.5 text-[13px] font-semibold text-[#0057d9] transition hover:border-[#0057d9] hover:bg-[#edf4ff] md:self-auto"
+            >
+              View all after signup
+            </button>
+          </div>
+
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {loading &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[280px] animate-pulse overflow-hidden rounded-2xl border border-[#d7e0ec] bg-white"
+                />
+              ))}
+
+            {!loading && hospitals.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-[#0057d9]/25 bg-white/70 px-8 py-14 text-center">
+                <Building2 className="mx-auto text-[#0057d9]/50" size={28} />
+                <p className="mt-4 text-[15px] font-medium text-[#091E42]">
+                  No hospitals listed yet
                 </p>
+                <p className="mt-1 text-[13px] text-[#5E6C84]">
+                  Facilities will appear here once added by admin.
+                </p>
+              </div>
+            )}
 
-                <form className="mt-[36px] flex flex-col" onSubmit={(e) => {
-                  e.preventDefault();
-                  navigateTo("/dashboard");
-                }}>
-                  <div className="mb-[20px]">
-                    <label htmlFor="home-login-email" className="mb-[8px] block text-[12px] font-semibold text-[#222]">
-                      Work Email
-                    </label>
-                    <input
-                      id="home-login-email"
-                      name="email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      placeholder="name@healthcare.org"
-                      className="h-[50px] w-full rounded-[6px] border border-[#CBD5E1] bg-white px-[16px] text-[15px] text-[#171717] placeholder-[#A0AEC0] outline-none transition focus:border-[#0057D9] focus:ring-1 focus:ring-[#0057D9]"
-                    />
-                  </div>
-
-                  <div className="mb-[18px]">
-                    <div className="mb-[8px] flex items-center justify-between">
-                      <label htmlFor="home-login-password" className="text-[12px] font-semibold text-[#222]">
-                        Password
-                      </label>
-                      <button type="button" className="text-[13px] font-bold text-[#0057D9] hover:underline">
-                        Forgot password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        id="home-login-password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        className="h-[50px] w-full rounded-[6px] border border-[#CBD5E1] bg-white px-[16px] pr-[48px] text-[15px] text-[#171717] placeholder-[#A0AEC0] outline-none transition focus:border-[#0057D9] focus:ring-1 focus:ring-[#0057D9]"
+            {hospitals.map((h, index) => {
+              const img = mediaUrl(h.image);
+              return (
+                <article
+                  key={h._id}
+                  className={`group overflow-hidden rounded-2xl border border-[#d7e0ec] bg-white transition duration-500 hover:-translate-y-1 hover:border-[#0057d9]/35 hover:shadow-[0_20px_40px_rgba(0,87,217,0.12)] ${
+                    hospitalsView.inView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                  }`}
+                  style={{ transitionDelay: hospitalsView.inView ? `${index * 90}ms` : "0ms" }}
+                >
+                  <div className="relative h-[128px] overflow-hidden bg-[linear-gradient(135deg,#003da1_0%,#0057d9_55%,#3d8bfd_100%)]">
+                    {img ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={img}
+                        alt=""
+                        className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-[16px] top-1/2 -translate-y-1/2 text-[#9D9D9D] hover:text-[#0057D9] transition text-sm font-semibold"
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Building2 className="text-white/35" size={42} />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071428]/55 to-transparent" />
+                    {h.emergency && (
+                      <span className="absolute left-3 top-3 rounded-md bg-[#071428]/75 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+                        Emergency
+                      </span>
+                    )}
+                    {typeof h.rating === "number" && h.rating > 0 && (
+                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-[#091E42]">
+                        <Star size={11} className="text-amber-500" fill="currentColor" />
+                        {h.rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="text-[17px] font-semibold leading-snug text-[#091E42]">
+                      {h.hospitalName}
+                    </h3>
+                    <p className="mt-2 flex items-center gap-1.5 text-[13px] text-[#5E6C84]">
+                      <MapPin size={13} className="shrink-0 text-[#0057d9]" />
+                      {h.city}
+                      {h.state ? `, ${h.state}` : ""}
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-[#eef2f7] pt-4 text-[12px] font-semibold text-[#5E6C84]">
+                      <span>{h.doctorsCount ?? 0} doctors</span>
+                      <span className="text-[#0057d9]">{h.type || "Hospital"}</span>
                     </div>
+
+                    {h.departments && h.departments.length > 0 && (
+                      <p className="mt-3 line-clamp-1 text-[12px] text-[#8492a6]">
+                        {h.departments.slice(0, 3).join(" · ")}
+                      </p>
+                    )}
                   </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-                  <div className="mb-[24px] flex items-start gap-[10px]">
-                    <input
-                      type="checkbox"
-                      id="remember-me"
-                      className="mt-[3px] h-[15px] w-[15px] rounded border-gray-300 accent-[#0057D9]"
-                    />
-                    <label htmlFor="remember-me" className="text-[13px] leading-[1.4] text-[#7A7A7A] select-none">
-                      Remember me on this device
-                    </label>
-                  </div>
+      {/* Doctors */}
+      <section
+        id="doctors"
+        ref={doctorsView.ref}
+        className="scroll-mt-24 relative overflow-hidden bg-[linear-gradient(180deg,#071428_0%,#0a1f45_48%,#0d2a5c_100%)]"
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute left-1/2 top-0 h-px w-[70%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#0057d9]/60 to-transparent"
+          aria-hidden
+        />
 
-                  <button className="flex h-[50px] w-full items-center justify-center gap-[8px] rounded-[6px] bg-[#0057D9] text-[15px] font-semibold text-white transition hover:bg-[#0048B5]">
-                    Sign In
-                  </button>
-
-                  <div className="my-[24px] border-t border-[#EEE]" />
-
-                  <button
-                    type="button"
-                    className="flex h-[50px] w-full items-center justify-center gap-[10px] rounded-[6px] border border-[#D9D9D9] bg-white text-[14px] font-medium text-[#444] transition hover:bg-gray-50"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-gray-200 text-[12px] font-bold text-[#4285F4]"
-                    >
-                      G
-                    </span>
-                    Sign in with Google
-                  </button>
-
-                  <p className="mt-[20px] text-center text-[13px] text-[#7A7A7A]">
-                    Don&apos;t have an account?{" "}
-                    <button type="button" onClick={() => navigateTo("/signup")} className="font-semibold text-[#0057D9] hover:underline">
-                      Request Access
-                    </button>
-                  </p>
-                </form>
-              </div>
-
+        <div className="relative mx-auto max-w-[1200px] px-6 py-24 md:px-10">
+          <div
+            className={`flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between transition-all duration-700 ${
+              doctorsView.inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            }`}
+          >
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#7eb6ff]">
+                Doctors
+              </p>
+              <h2 className="mt-3 max-w-[16ch] font-[family-name:var(--font-display)] text-[36px] font-medium leading-[1.12] tracking-[-0.02em] text-white sm:text-[44px]">
+                Specialists available now
+              </h2>
+              <p className="mt-4 max-w-[44ch] text-[15px] leading-[1.7] text-white/60">
+                Active clinicians from your MediConnect directory — ready for booking once you create an account.
+              </p>
             </div>
-          </main>
-        )}
+            <div className="flex items-center gap-3 text-[13px] font-semibold text-white/55">
+              <span className="inline-flex h-2 w-2 rounded-sm bg-emerald-400" />
+              {stats.activeDoctors || doctors.length} active now
+            </div>
+          </div>
 
-        {/* SCREEN C: PREMIUM SIGNUP / CREATE ACCOUNT */}
-        {currentScreen === 'signup' && (
-          <main className="animate-fadeIn flex-1 flex items-center justify-center py-[60px] px-4">
-            <div className="flex w-full max-w-[1160px] h-[720px] bg-white rounded-[16px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden border border-[#F0F0F0]">
-              
-              {/* Left Side: Brand Marketing Panel */}
-              <div className="relative hidden md:flex w-[48%] flex-col justify-between bg-gradient-to-b from-[#005EDD] to-[#003DA1] p-[60px] text-white">
-                <div className="flex items-center gap-[8px] text-[12px] font-bold tracking-widest uppercase opacity-80">
-                  🏢 ENTERPRISE HEALTHCARE
-                </div>
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {loading &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[168px] animate-pulse rounded-2xl border border-white/10 bg-white/5"
+                />
+              ))}
 
-                <div className="mb-[40px] space-y-4">
-                  <h1 className="text-[42px] font-bold leading-[1.15] tracking-tight">
-                    The future of <br />clinical efficiency
-                  </h1>
-                  <p className="text-[15px] leading-[1.6] text-blue-100 max-w-[380px] font-light">
-                    Streamline patient care and administrative workflows with our secure, HIPAA-compliant clinical operating system.
-                  </p>
-                </div>
-                
-                <div className="text-[11px] font-mono text-blue-200/50">SOC2 Type II Certified Cloud Data Architecture.</div>
-              </div>
-
-              {/* Right Side: Signup Form */}
-              <div className="flex flex-1 flex-col justify-center px-[40px] lg:px-[70px] py-[40px] bg-white">
-                <h2 className="text-[32px] font-bold tracking-tight text-[#171717]">
-                  Create account
-                </h2>
-                <p className="mt-[6px] text-[14px] text-[#7B7B7B]">
-                  Enter your credentials to continue
+            {!loading && doctors.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-white/20 bg-white/5 px-8 py-14 text-center">
+                <Stethoscope className="mx-auto text-white/40" size={28} />
+                <p className="mt-4 text-[15px] font-medium text-white">
+                  No active doctors yet
                 </p>
+                <p className="mt-1 text-[13px] text-white/50">
+                  Doctors will appear here once added by admin.
+                </p>
+              </div>
+            )}
 
-                <form className="mt-[30px] flex flex-col" onSubmit={(e) => {
-                  e.preventDefault();
-                  navigateTo("/login");
-                }}>
-                  
-                  {/* Name Input */}
-                  <div className="mb-[16px]">
-                    <label htmlFor="home-signup-name" className="mb-[8px] block text-[12px] font-semibold text-[#222]">
-                      Full Name
-                    </label>
-                    <input
-                      id="home-signup-name"
-                      name="name"
-                      type="text"
-                      required
-                      autoComplete="name"
-                      placeholder="Dr. Alexander Wright"
-                      className="h-[48px] w-full rounded-[6px] border border-[#CBD5E1] bg-white px-[16px] text-[15px] text-[#171717] placeholder-[#A0AEC0] outline-none transition focus:border-[#0057D9] focus:ring-1 focus:ring-[#0057D9]"
-                    />
-                  </div>
-
-                  {/* Email Input */}
-                  <div className="mb-[16px]">
-                    <label htmlFor="home-signup-email" className="mb-[8px] block text-[12px] font-semibold text-[#222]">
-                      Work Email
-                    </label>
-                    <input
-                      id="home-signup-email"
-                      name="email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      placeholder="name@healthcare.org"
-                      className="h-[48px] w-full rounded-[6px] border border-[#CBD5E1] bg-white px-[16px] text-[15px] text-[#171717] placeholder-[#A0AEC0] outline-none transition focus:border-[#0057D9] focus:ring-1 focus:ring-[#0057D9]"
-                    />
-                  </div>
-
-                  {/* Password Input */}
-                  <div className="mb-[20px]">
-                    <label htmlFor="home-signup-password" className="mb-[8px] block text-[12px] font-semibold text-[#222]">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="home-signup-password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        autoComplete="new-password"
-                        placeholder="••••••••"
-                        className="h-[48px] w-full rounded-[6px] border border-[#CBD5E1] bg-white px-[16px] pr-[48px] text-[15px] text-[#171717] placeholder-[#A0AEC0] outline-none transition focus:border-[#0057D9] focus:ring-1 focus:ring-[#0057D9]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-[16px] top-1/2 -translate-y-1/2 text-[#9D9D9D] hover:text-[#0057D9] text-xs font-semibold"
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
+            {doctors.map((d, index) => {
+              const photo = mediaUrl(d.profileImage);
+              return (
+                <article
+                  key={d._id}
+                  className={`relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.06] p-5 backdrop-blur-sm transition duration-500 hover:border-[#0057d9]/50 hover:bg-white/[0.1] ${
+                    doctorsView.inView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                  }`}
+                  style={{ transitionDelay: doctorsView.inView ? `${index * 90}ms` : "0ms" }}
+                >
+                  <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-[80px] bg-[#0057d9]/15" />
+                  <div className="relative flex gap-4">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-[#0057d9]/25 text-[#7eb6ff]">
+                      {photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photo} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Stethoscope size={24} />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="truncate text-[16px] font-semibold text-white">
+                          {d.fullName}
+                        </h3>
+                        {typeof d.rating === "number" && d.rating > 0 && (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-[#ffd27a]">
+                            <Star size={11} fill="currentColor" />
+                            {d.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[13px] font-medium text-[#7eb6ff]">
+                        {d.specialization}
+                      </p>
+                      <p className="mt-3 truncate text-[12px] text-white/45">
+                        {d.hospitalName || d.department}
+                      </p>
+                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3 text-[12px] text-white/50">
+                        <span>
+                          {d.experience ? `${d.experience} yrs experience` : d.department}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => go("/signup")}
+                          className="font-semibold text-[#7eb6ff] transition hover:text-white"
+                        >
+                          Book →
+                        </button>
+                      </div>
                     </div>
                   </div>
+                </article>
+              );
+            })}
+          </div>
 
-                  {/* Terms Checkbox */}
-                  <div className="mb-[24px] flex items-start gap-[10px]">
-                    <input
-                      type="checkbox"
-                      required
-                      id="terms"
-                      className="mt-[3px] h-[15px] w-[15px] rounded border-gray-300 accent-[#0057D9]"
-                    />
-                    <label htmlFor="terms" className="text-[12px] leading-[1.5] text-[#7A7A7A] select-none">
-                      I agree to the <span className="text-[#0057D9] font-semibold hover:underline cursor-pointer">Terms of Service</span> and <span className="text-[#0057D9] font-semibold hover:underline cursor-pointer">Privacy Policy</span>.
-                    </label>
-                  </div>
+          <div className="mt-12 flex justify-center">
+            <button
+              type="button"
+              onClick={() => go("/signup")}
+              className="rounded-lg bg-[#0057d9] px-7 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_28px_rgba(0,87,217,0.35)] transition hover:bg-[#1768e0]"
+            >
+              Create account to book
+            </button>
+          </div>
+        </div>
+      </section>
 
-                  <button className="flex h-[50px] w-full items-center justify-center rounded-[6px] bg-[#0057D9] text-[15px] font-semibold text-white transition hover:bg-[#0048B5]">
-                    Create Account
-                  </button>
+      {/* How it works */}
+      <section
+        id="how"
+        ref={howView.ref}
+        className="scroll-mt-24 relative overflow-hidden bg-white"
+      >
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-[linear-gradient(180deg,transparent_0%,#edf4ff_100%)]"
+          aria-hidden
+        />
 
-                  <div className="my-[20px] border-t border-[#EEE]" />
+        <div className="relative mx-auto max-w-[1200px] px-6 py-24 md:px-10">
+          <div
+            className={`mx-auto max-w-[560px] text-center transition-all duration-700 ${
+              howView.inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            }`}
+          >
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#0057d9]">
+              How it works
+            </p>
+            <h2 className="mt-3 font-[family-name:var(--font-display)] text-[36px] font-medium leading-[1.12] tracking-[-0.02em] text-[#091E42] sm:text-[44px]">
+              Three steps to your next visit
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.7] text-[#5E6C84]">
+              From signup to confirmed appointment — simple, clear, and fast.
+            </p>
+          </div>
 
-                  <button
-                    type="button"
-                    className="flex h-[48px] w-full items-center justify-center gap-[10px] rounded-[6px] border border-[#D9D9D9] bg-white text-[14px] font-medium text-[#444] transition hover:bg-gray-50"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-gray-200 text-[12px] font-bold text-[#4285F4]"
-                    >
-                      G
-                    </span>
-                    Sign up with Google
-                  </button>
+          <ol className="relative mt-16 grid gap-6 sm:grid-cols-3">
+            <div
+              className="pointer-events-none absolute left-[16%] right-[16%] top-[52px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(0,87,217,0.35),rgba(0,87,217,0.35),transparent)] sm:block"
+              aria-hidden
+            />
+            {[
+              {
+                step: "01",
+                title: "Sign up",
+                body: "Create your patient account in a few minutes.",
+                Icon: UserPlus,
+              },
+              {
+                step: "02",
+                title: "Choose care",
+                body: "Pick a doctor and hospital from live listings.",
+                Icon: Search,
+              },
+              {
+                step: "03",
+                title: "Confirm visit",
+                body: "Select date and time — your appointment is booked.",
+                Icon: CalendarCheck,
+              },
+            ].map((item, index) => (
+              <li
+                key={item.step}
+                className={`relative rounded-2xl border border-[#d7e0ec] bg-[linear-gradient(180deg,#ffffff_0%,#f7faff_100%)] p-7 text-center transition duration-500 hover:border-[#0057d9]/35 hover:shadow-[0_16px_36px_rgba(0,87,217,0.1)] ${
+                  howView.inView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                }`}
+                style={{ transitionDelay: howView.inView ? `${index * 120}ms` : "0ms" }}
+              >
+                <div className="mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-[linear-gradient(145deg,#0057d9_0%,#003da1_100%)] text-white shadow-[0_10px_24px_rgba(0,87,217,0.28)]">
+                  <item.Icon size={26} strokeWidth={1.8} />
+                </div>
+                <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#0057d9]/70">
+                  Step {item.step}
+                </p>
+                <h3 className="mt-2 text-[20px] font-semibold text-[#091E42]">{item.title}</h3>
+                <p className="mt-3 text-[14px] leading-[1.65] text-[#5E6C84]">{item.body}</p>
+              </li>
+            ))}
+          </ol>
 
-                  <p className="mt-[20px] text-center text-[13px] text-[#7A7A7A]">
-                    Already have an account?{" "}
-                    <button type="button" onClick={() => navigateTo("/login")} className="font-semibold text-[#0057D9] hover:underline">
-                      Log in
-                    </button>
-                  </p>
-                </form>
+          <div
+            className={`mt-16 overflow-hidden rounded-2xl bg-[linear-gradient(120deg,#071428_0%,#003da1_50%,#0057d9_100%)] transition duration-700 ${
+              howView.inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            }`}
+            style={{ transitionDelay: howView.inView ? "280ms" : "0ms" }}
+          >
+            <div className="flex flex-col items-start justify-between gap-6 px-8 py-10 sm:flex-row sm:items-center sm:px-12">
+              <div>
+                <h3 className="font-[family-name:var(--font-display)] text-[28px] font-medium tracking-[-0.02em] text-white sm:text-[32px]">
+                  Ready for better care access?
+                </h3>
+                <p className="mt-2 max-w-[42ch] text-[15px] text-white/70">
+                  Join MediConnect and book from the hospitals and doctors listed above.
+                </p>
               </div>
-
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => go("/signup")}
+                  className="rounded-lg bg-white px-7 py-3.5 text-[15px] font-semibold text-[#0057d9] transition hover:bg-[#edf4ff]"
+                >
+                  Get started
+                </button>
+                <button
+                  type="button"
+                  onClick={() => go("/login")}
+                  className="rounded-lg border border-white/30 bg-white/5 px-7 py-3.5 text-[15px] font-semibold text-white transition hover:bg-white/10"
+                >
+                  Sign in
+                </button>
+              </div>
             </div>
-          </main>
-        )}
-
-        {/* 3. COMPLIANCE SITE FOOTER */}
-        <footer className="flex flex-col sm:flex-row h-auto sm:h-[60px] items-center justify-between border-t border-[#E8E8E8] bg-[#F4F5F7] px-[60px] py-4 sm:py-0 text-[12px] text-[#6B778C] gap-4">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-[24px]">
-            <span className="font-bold text-[#42526E] text-[14px]">MediConnect</span>
-            <button onClick={() => navigateTo("/dashboard")} className="hover:underline">Privacy Policy</button>
-            <button onClick={() => navigateTo("/dashboard")} className="hover:underline">Terms of Service</button>
-            <button onClick={() => navigateTo("/dashboard")} className="hover:underline">HIPAA Compliance</button>
-            <button onClick={() => navigateTo("/dashboard")} className="hover:underline">Cookie Settings</button>
           </div>
-          <div className="text-center sm:text-right">
-            © 2026 MediConnect Medical Systems. All rights reserved.
-          </div>
-        </footer>
-      </div>
+        </div>
+      </section>
 
-      {/* Global CSS Style tag for fluid animations */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
+      {/* Footer */}
+      <footer className="bg-[linear-gradient(180deg,#0a1f45_0%,#071428_100%)] text-white">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-6 py-10 md:flex-row md:items-center md:justify-between md:px-10">
+          <div className="flex items-center gap-3">
+            <BrandLogo size={28} />
+            <div>
+              <p className="font-[family-name:var(--font-display)] text-[18px] font-semibold">
+                MediConnect
+              </p>
+              <p className="text-[12px] text-white/45">Clinical care, simply connected.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-white/55">
+            <button type="button" onClick={() => go("/login")} className="hover:text-white">
+              Sign in
+            </button>
+            <button type="button" onClick={() => go("/signup")} className="hover:text-white">
+              Get started
+            </button>
+            <button type="button" onClick={() => go("/admin/login")} className="hover:text-white">
+              Admin
+            </button>
+          </div>
+
+          <p className="text-[12px] text-white/35">
+            © {new Date().getFullYear()} MediConnect. All rights reserved.
+          </p>
+        </div>
+      </footer>
+
+      <style jsx>{`
+        .landing-fade {
+          animation: landingFade 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .landing-fade-delay {
+          animation: landingFade 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+        }
+        .landing-fade-late {
+          animation: landingFade 1s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+        }
+        .landing-rise {
+          animation: landingRise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .landing-kenburns {
+          animation: landingKenBurns 18s ease-out both;
+        }
+        @keyframes landingFade {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes landingRise {
+          from {
+            opacity: 0;
+            transform: translateY(22px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes landingKenBurns {
+          from {
+            transform: scale(1.08);
+          }
+          to {
+            transform: scale(1);
+          }
         }
       `}</style>
     </div>

@@ -13,11 +13,11 @@ import {
   Plus, 
   HelpCircle, 
   LogOut,
-  BriefcaseMedical,
   Settings
 } from "lucide-react";
 
 import { UserSettingsPanel } from "./components/UserSettingsPanel";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function DashboardLayout({
   children,
@@ -49,15 +49,14 @@ export default function DashboardLayout({
       {/* Sidebar Navigation */}
       <aside className="w-[260px] bg-white border-r border-gray-200/80 flex flex-col justify-between hidden md:flex shrink-0">
         <div>
-          {/* Brand Header with Exact Logo from image_edee59.png */}
-          <div className="p-6 pt-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0052cc] text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
-              <BriefcaseMedical size={22} strokeWidth={2.5} fill="currentColor" className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-[20px] font-black tracking-tight text-[#0052cc] leading-none">Mediconnect</h2>
-              <p className="text-[11px] font-bold text-gray-400 tracking-wide mt-1">Clinical Portal</p>
-            </div>
+          <div className="p-6 pt-8">
+            <BrandLogo
+              size={40}
+              showText
+              subtitle="Clinical Portal"
+              textClassName="text-[20px] font-black tracking-tight text-[#0057d9] leading-none"
+              subtitleClassName="text-[11px] font-bold text-gray-400 tracking-wide mt-1"
+            />
           </div>
 
           {/* Navigation Links */}
