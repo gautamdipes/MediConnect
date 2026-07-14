@@ -25,7 +25,15 @@ export class UserAppointmentService {
 
   /** Book a new appointment */
   async createAppointment(userId: string, data: any) {
-    const appointment = await AppointmentModel.create({ ...data, patientId: userId });
+    const { doctorId, hospitalId, ...rest } = data;
+    if (!doctorId) {
+      throw { status: 400, message: "doctorId is required" };
+    }
+
+    const payload: Record<string, unknown> = { ...rest, patientId: userId, doctorId };
+    if (hospitalId) payload.hospitalId = hospitalId;
+
+    const appointment = await AppointmentModel.create(payload);
     return appointment;
   }
 

@@ -15,6 +15,7 @@ import adminHospitalRoutes    from "./routes/admin/hospital.route";
 import adminDoctorRoutes      from "./routes/admin/doctor.route";
 import adminAppointmentRoutes from "./routes/admin/appointment.route";
 import adminOverviewRoutes    from "./routes/admin/overview.route";
+import publicRoutes           from "./routes/public.routes";
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.get("/", (_req, res) => {
 });
 
 // Public routes
+app.use("/api/v1/public",             publicRoutes);
 app.use("/api/v1/users",              userRoutes);
 app.use("/api/v1/auth",               authRoutes);
 app.use("/api/v1/medical-records",    medicalRecordRoutes);
