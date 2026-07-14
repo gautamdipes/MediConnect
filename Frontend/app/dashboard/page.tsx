@@ -5,8 +5,6 @@ import { useAuth } from "./context/AuthContext";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/proxy";
 import {
-  Bell,
-  Search,
   Calendar as CalendarIcon,
   MapPin,
   Star,
@@ -32,7 +30,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
-import { UserNotificationsDropdown } from "./components/UserNotificationsDropdown";
+import { DashboardTopBar } from "./components/DashboardTopBar";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -343,8 +341,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showBookModal, setShowBookModal] = useState(false);
   const [apptFilter, setApptFilter] = useState("ALL");
-  const [showNotifications, setShowNotifications] = useState(false);
-  const bellRef = React.useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!user) router.replace("/login");
@@ -364,7 +360,9 @@ export default function DashboardPage() {
       setAppointments(apptRes.data?.appointments || []);
       setDoctors(docRes.data?.data || []);
       setHospitals(hospRes.data?.hospitals || []);
-      setRecentRecords(recRes.data?.records || []);
+      setRecentRecords(
+        Array.isArray(recRes.data) ? recRes.data : recRes.data?.records || []
+      );
     } catch (e) {
       console.error("Dashboard fetch error", e);
     } finally {
@@ -386,10 +384,6 @@ export default function DashboardPage() {
     }
   };
 
-  const profilePicSrc = user?.profileImage
-    ? `http://localhost:5000${user.profileImage}`
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "U")}&background=dbeafe&color=1d4ed8&bold=true&size=80`;
-
   const firstName = user?.fullName?.split(" ")[0] || "there";
 
   const filteredAppointments =
@@ -406,45 +400,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f3f4f6]">
-      {/* ── Header ──────────────────────────────────────────── */}
-      <header className="h-20 bg-white px-6 md:px-8 flex items-center justify-between shrink-0 border-b border-gray-100 shadow-sm">
-        <div className="relative w-80 max-w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search doctors, hospitals, records..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium outline-none text-gray-700 placeholder-gray-400 focus:border-blue-300 focus:bg-white transition-all"
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-600">
-            <CalendarIcon size={13} className="text-gray-400" />
-            <span>{nowDateStr()}</span>
-          </div>
-          <button
-            onClick={fetchAll}
-            className="p-2 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          </button>
-          <div className="relative">
-            <button
-              ref={bellRef}
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={`p-2 border rounded-full transition-colors ${showNotifications ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600"}`}
-            >
-              <Bell size={17} strokeWidth={2.5} />
-            </button>
-            <UserNotificationsDropdown
-              open={showNotifications}
-              onClose={() => setShowNotifications(false)}
-              anchorRef={bellRef}
-            />
-          </div>
-          <img src={profilePicSrc} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 shadow-sm" />
-        </div>
-      </header>
+      <DashboardTopBar placeholder="Search doctors, hospitals, records..." />
 
       {/* ── Body ────────────────────────────────────────────── */}
       <div className="px-6 md:px-8 max-w-[1400px] w-full mx-auto space-y-6 py-6 pb-20">
@@ -458,6 +414,17 @@ export default function DashboardPage() {
             <p className="text-gray-500 mt-1 text-sm font-medium">Your health dashboard — all in one place</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <div className="hidden md:flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-600">
+              <CalendarIcon size={13} className="text-gray-400" />
+              <span>{nowDateStr()}</span>
+            </div>
+            <button
+              onClick={fetchAll}
+              className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 text-gray-500 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            </button>
             <button
               onClick={() => setShowBookModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-sm shadow-blue-500/30 transition-all"

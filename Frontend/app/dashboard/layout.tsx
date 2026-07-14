@@ -18,6 +18,7 @@ import {
 
 import { UserSettingsPanel } from "./components/UserSettingsPanel";
 import { BrandLogo } from "@/components/BrandLogo";
+import { DashboardUIProvider } from "./components/DashboardTopBar";
 
 export default function DashboardLayout({
   children,
@@ -121,7 +122,9 @@ export default function DashboardLayout({
 
       {/* Main Layout Container Container */}
       <main className="flex-1 overflow-auto bg-[#f3f4f6]">
-        {children}
+        <DashboardUIProvider openSettings={() => setShowSettings(true)}>
+          {children}
+        </DashboardUIProvider>
       </main>
     </div>
   );

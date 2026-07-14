@@ -2,15 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  Search,
-  Bell,
-  Settings,
   Plus,
   HeartPulse,
   Video,
 } from "lucide-react";
 import { api } from "@/lib/proxy";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
+import { DashboardTopBar } from "../components/DashboardTopBar";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Appointment {
@@ -240,25 +238,13 @@ export default function AppointmentsPage() {
 
   const upcoming = appointments.filter((a) => a.status !== "CANCELLED" && a.status !== "COMPLETED").slice(0, 4);
 
-  const profilePicSrc = user?.profileImage
-    ? `http://localhost:5000${user.profileImage}`
-    : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop";
-
   return (
-    <div className="min-h-screen bg-[#f5f6f8] px-8 py-6 text-[#171d2d]">
+    <div className="flex min-h-screen flex-col bg-[#f5f6f8] text-[#171d2d]">
       {showModal && <BookModal doctors={doctors} hospitals={hospitals} onClose={() => setShowModal(false)} onBooked={fetchData} />}
 
-      {/* Top bar */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className="relative max-w-[360px] flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input placeholder="Search medical data..." className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-blue-500 focus:bg-white" />
-        </div>
-        <button className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"><Bell size={17} /></button>
-        <button className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"><Settings size={17} /></button>
-        <img src={profilePicSrc} alt="Profile" className="h-9 w-9 rounded-full border border-gray-200 object-cover" />
-      </div>
+      <DashboardTopBar placeholder="Search appointments, doctors, hospitals..." />
 
+      <div className="px-8 py-6">
       {/* Header */}
       <div className="mb-5 flex items-start justify-between">
         <div>
@@ -394,6 +380,7 @@ export default function AppointmentsPage() {
             <Video size={26} strokeWidth={1.6} />
           </section>
         </div>
+      </div>
       </div>
     </div>
   );

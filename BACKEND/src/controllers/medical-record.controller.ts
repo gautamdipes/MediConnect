@@ -52,7 +52,8 @@ export const createMedicalRecord = async (req: Request, res: Response) => {
     if (req.file) {
       const ext = req.file.originalname.split('.').pop()?.toUpperCase();
       if (ext === "PDF") format = "PDF";
-      else if (ext === "PNG" || ext === "JPG" || ext === "JPEG") format = "JPG";
+      else if (ext === "PNG") format = "PNG";
+      else if (ext === "JPG" || ext === "JPEG") format = "JPG";
       else if (ext === "DCM" || ext === "DICOM") format = "DICOM";
     }
 
@@ -93,7 +94,8 @@ export const updateMedicalRecord = async (req: Request<{ id: string }>, res: Res
       data.attachments = [`/uploads/${req.file.filename}`];
       const ext = req.file.originalname.split('.').pop()?.toUpperCase();
       if (ext === "PDF") data.format = "PDF";
-      else if (ext === "PNG" || ext === "JPG" || ext === "JPEG") data.format = "JPG";
+      else if (ext === "PNG") data.format = "PNG";
+      else if (ext === "JPG" || ext === "JPEG") data.format = "JPG";
       else if (ext === "DCM" || ext === "DICOM") data.format = "DICOM";
     }
 

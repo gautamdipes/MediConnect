@@ -5,9 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { 
-  Bell, 
-  Settings, 
-  Search, 
   Camera, 
   Pencil, 
   Info, 
@@ -18,7 +15,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import type { User } from "../context/AuthContext";
 import { apiRequest } from "@/lib/proxy";
-import { UserNotificationsDropdown } from "../components/UserNotificationsDropdown";
+import { DashboardTopBar } from "../components/DashboardTopBar";
 import React from "react";
 
 const profileSchema = z.object({
@@ -168,39 +165,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col h-full bg-[#fcfcfc]">
-      {/* Top Navbar */}
-      <header className="h-[72px] bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0">
-        <div className="relative w-96">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search..." 
-            className="w-full h-10 pl-11 pr-4 bg-white border border-gray-300 rounded-full text-sm outline-none focus:border-[#0057d9]"
-          />
-        </div>
-        <div className="flex items-center gap-5">
-          <div className="relative">
-            <button
-              ref={bellRef}
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={`text-gray-600 transition-colors ${showNotifications ? "text-blue-600" : "hover:text-gray-900"}`}
-            >
-              <Bell size={22} strokeWidth={2} />
-            </button>
-            <UserNotificationsDropdown
-              open={showNotifications}
-              onClose={() => setShowNotifications(false)}
-              anchorRef={bellRef}
-            />
-          </div>
-          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-            <Settings size={22} strokeWidth={2} />
-          </button>
-          <div className="w-9 h-9 rounded-full border border-gray-200 overflow-hidden ml-2">
-            <img src={profilePicSrc} alt="Avatar" className="w-full h-full object-cover" />
-          </div>
-        </div>
-      </header>
+      <DashboardTopBar placeholder="Search profile settings..." />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-8 max-w-[1200px] mx-auto w-full">

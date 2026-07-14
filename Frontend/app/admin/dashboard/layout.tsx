@@ -30,6 +30,11 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 
+function adminAvatarUrl(imagePath?: string) {
+  if (!imagePath) return "";
+  return imagePath.startsWith("http") ? imagePath : `http://localhost:5000${imagePath}`;
+}
+
 // ── Notification Item ─────────────────────────────────────────────────────────
 interface NotificationItem {
   id: string;
@@ -64,7 +69,7 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
       setPhoneNumber(user.phoneNumber || "");
-      setPreviewUrl(user.profileImage ? `http://localhost:5000${user.profileImage}` : "");
+      setPreviewUrl(user.adminProfileImage ? adminAvatarUrl(user.adminProfileImage) : "");
     }
   }, [user, open]);
 
@@ -488,8 +493,8 @@ function SettingsPanel({
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-md overflow-hidden shrink-0">
-                {adminUser?.profileImage ? (
-                  <img src={`http://localhost:5000${adminUser.profileImage}`} alt="Avatar" className="w-full h-full object-cover" />
+                {adminUser?.adminProfileImage ? (
+                  <img src={adminAvatarUrl(adminUser.adminProfileImage)} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   adminUser?.fullName?.slice(0, 2).toUpperCase() || "AR"
                 )}
@@ -609,17 +614,12 @@ export default function AdminLayout({
   const [adminUser, setAdminUser] = useState<any>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
 
-  // Initialize dark mode from localStorage on mount
+  // Always use light theme to match the user portal
   useEffect(() => {
-    const isDark = localStorage.getItem('adminDarkMode') === 'true';
-    setDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-    }
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
+    localStorage.setItem("adminDarkMode", "false");
+    setDarkMode(false);
   }, []);
 
   // Toggle dark mode
@@ -683,13 +683,13 @@ export default function AdminLayout({
         <button
           key={link.name}
           onClick={() => router.push(link.href)}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[14px] font-medium transition-all ${
+          className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-[14px] font-bold transition-all ${
             isActive
-              ? "bg-[#edf4ff] text-[#0057d9] dark:bg-blue-950/40 dark:text-blue-400"
-              : "text-[#64748b] hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
+              ? "bg-[#0052cc] text-white shadow-sm shadow-blue-600/10"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
           }`}
         >
-          <Icon size={18} className={isActive ? "text-[#0057d9] dark:text-blue-400" : "text-[#94a3b8] dark:text-slate-500"} />
+          <Icon size={18} strokeWidth={2.5} className={isActive ? "text-white" : "text-gray-400"} />
           {link.name}
         </button>
       );
@@ -697,7 +697,7 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden font-sans antialiased text-[#1e293b] dark:text-slate-100 transition-colors duration-300">
+    <div className="flex h-screen bg-[#f3f4f6] overflow-hidden font-sans antialiased text-gray-900">
       {/* Settings Panel */}
       <SettingsPanel
         open={showSettings}
@@ -717,93 +717,97 @@ export default function AdminLayout({
       />
 
       {/* Sidebar */}
-      <aside className="w-[240px] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-300">
+      <aside className="w-[260px] bg-white border-r border-gray-200/80 flex flex-col justify-between hidden md:flex shrink-0">
         <div>
           {/* Logo */}
-          <div className="p-5">
+          <div className="p-6 pt-8">
             <BrandLogo
-              size={36}
+              size={40}
               showText
-              subtitle="Admin"
-              textClassName="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white"
-              subtitleClassName="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase -mt-0.5"
+              subtitle="Admin Portal"
+              textClassName="text-[20px] font-black tracking-tight text-[#0057d9] leading-none"
+              subtitleClassName="text-[11px] font-bold text-gray-400 tracking-wide mt-1"
             />
           </div>
 
           {/* Navigation */}
-          <div className="px-3 space-y-5 mt-4">
+          <div className="px-4 space-y-5 mt-2">
             <div>
-              <p className="px-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1.5">Core</p>
-              <nav className="space-y-0.5">{renderNavLinks(coreLinks)}</nav>
+              <p className="px-4 text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1.5">Core</p>
+              <nav className="space-y-1">{renderNavLinks(coreLinks)}</nav>
             </div>
             <div>
-              <p className="px-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1.5">Ops</p>
-              <nav className="space-y-0.5">{renderNavLinks(opsLinks)}</nav>
+              <p className="px-4 text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1.5">Ops</p>
+              <nav className="space-y-1">{renderNavLinks(opsLinks)}</nav>
             </div>
           </div>
         </div>
 
         {/* Bottom actions */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
+        <div className="p-6 border-t border-gray-100 space-y-1">
           <button
             onClick={() => setShowSettings(true)}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[14px] font-medium text-[#64748b] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors"
+            className="w-full flex items-center gap-3.5 px-3 py-2 text-gray-500 hover:text-gray-900 transition-colors text-xs font-bold rounded-lg hover:bg-gray-50"
           >
-            <Settings size={18} className="text-[#94a3b8] dark:text-slate-500" />
+            <Settings size={16} strokeWidth={2.5} className="text-gray-400" />
             Settings
           </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[14px] font-medium text-red-500 hover:bg-red-550"
+            className="w-full flex items-center gap-3.5 px-3 py-2 text-red-600 hover:text-red-700 transition-colors text-xs font-bold rounded-lg hover:bg-red-50"
           >
-            <LogOut size={18} className="text-red-400" />
+            <LogOut size={16} strokeWidth={2.5} className="text-red-400" />
             Sign Out
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 flex items-center justify-between shrink-0 relative transition-colors duration-300">
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f3f4f6]">
+        <header className="h-20 bg-white border-b border-gray-100 px-6 md:px-8 flex items-center justify-between shrink-0 relative shadow-sm">
+          <div className="relative w-80 max-w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search infrastructure..."
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-50/50 dark:bg-slate-800 rounded-lg text-sm border border-transparent focus:bg-white dark:focus:bg-slate-850 focus:border-slate-200 dark:focus:border-slate-700 outline-none transition text-slate-900 dark:text-slate-100"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[13px] outline-none text-gray-700 placeholder-gray-400 focus:border-blue-300 focus:bg-white transition-all"
             />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-full text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-full text-emerald-600 text-[12px] font-semibold border border-emerald-100">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               SYNC LIVE
             </div>
             <button
               ref={bellRef}
               onClick={() => setShowNotifications(!showNotifications)}
-              className={`p-1.5 relative rounded-lg transition-colors ${showNotifications ? "text-blue-600 bg-blue-50 dark:bg-slate-800" : "text-slate-400 dark:text-slate-500 hover:text-slate-650 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+                showNotifications
+                  ? "border-blue-100 bg-blue-50 text-blue-600"
+                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              }`}
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-900"></span>
+              <Bell size={17} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white" />
             </button>
             <button
-              onClick={toggleDarkMode}
-              className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-650 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => setShowSettings(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              <Settings size={17} />
             </button>
             <div
               onClick={() => setShowProfileModal(true)}
-              className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 cursor-pointer group"
+              className="flex items-center gap-2 pl-2 border-l border-gray-200 cursor-pointer group"
             >
-              <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 overflow-hidden shadow-sm">
-                {adminUser?.profileImage ? (
-                  <img src={`http://localhost:5000${adminUser.profileImage}`} alt="Avatar" className="w-full h-full object-cover" />
+              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 overflow-hidden border border-gray-200">
+                {adminUser?.adminProfileImage ? (
+                  <img src={adminAvatarUrl(adminUser.adminProfileImage)} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   adminUser?.fullName?.slice(0, 2).toUpperCase() || "AR"
                 )}
               </div>
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">
+              <span className="hidden sm:inline text-sm font-semibold text-gray-700 group-hover:text-[#0057d9] transition-colors">
                 {adminUser?.fullName || "Admin Root"}
               </span>
             </div>
@@ -817,7 +821,7 @@ export default function AdminLayout({
           />
         </header>
 
-        <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950 p-8 transition-colors duration-300">
+        <main className="flex-1 overflow-auto bg-[#f3f4f6] p-6 md:p-8">
           {children}
         </main>
       </div>

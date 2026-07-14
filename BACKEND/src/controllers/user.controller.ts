@@ -34,10 +34,27 @@ export const updateUser = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const profileImage = req.file ? `/uploads/${req.file.filename}` : undefined;
-    const updateData = { ...req.body, profileImage };
+
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.adminProfileImage = `/uploads/${req.file.filename}`;
+    }
+    delete updateData.profileImage;
+
     const result = await userService.updateUser(userId, updateData);
-    res.status(200).json(result);
+    const user = result.user as any;
+
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        adminProfileImage: user.adminProfileImage,
+      },
+      message: result.message,
+    });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }

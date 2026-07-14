@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     password: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     profileImage: { type: String },
+    adminProfileImage: { type: String },
     dob: { type: String },
     address: { type: String },
     gender: { type: String },

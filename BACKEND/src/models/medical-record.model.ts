@@ -28,7 +28,7 @@ const medicalRecordSchema = new mongoose.Schema<IMedicalRecordDocument>(
     recordName: { type: String },
     dept: { type: String, default: "Internal Med" },
     status: { type: String, enum: ["VERIFIED", "REVIEW", "ARCHIVED"], default: "VERIFIED" },
-    format: { type: String, enum: ["PDF", "DICOM", "JPG"], default: "PDF" },
+    format: { type: String, enum: ["PDF", "DICOM", "JPG", "PNG"], default: "PDF" },
   },
   { timestamps: true }
 );

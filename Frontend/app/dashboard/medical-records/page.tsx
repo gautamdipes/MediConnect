@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Search, Bell, Upload, Filter, FileText, Eye, Download,
+  Upload, Filter, FileText, Eye, Download,
   Trash2, ChevronLeft, ChevronRight, ShieldCheck, FilePlus2,
   Plus, X, Pencil, Loader2, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
-import { UserNotificationsDropdown } from "../components/UserNotificationsDropdown";
+import { api } from "@/lib/proxy";
+import { DashboardTopBar } from "../components/DashboardTopBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,18 +36,63 @@ interface FormState {
   status: RecordStatus;
   notes: string;
   fileUrl: string;
+  file: File | null;
 }
 
 const EMPTY_FORM: FormState = {
   recordName: "", dept: "Laboratory", doctor: "",
-  format: "PDF", status: "REVIEW", notes: "", fileUrl: "",
+  format: "PDF", status: "REVIEW", notes: "", fileUrl: "", file: null,
 };
 
 const DEPTS = ["Internal Med", "Radiology", "Laboratory", "Immunization", "Cardiology", "Surgery", "Dental", "Other"];
 const FORMATS: RecordFormat[] = ["PDF", "DICOM", "JPG", "PNG", "OTHER"];
 const STATUSES: RecordStatus[] = ["VERIFIED", "REVIEW", "ARCHIVED"];
 const PAGE_SIZE = 9;
-const BASE = "http://localhost:5000/api/medical-records";
+
+function resolveAttachmentUrl(attachment?: string): string | undefined {
+  if (!attachment) return undefined;
+  if (attachment.startsWith("http")) return attachment;
+  return attachment.startsWith("/") ? attachment : `/${attachment}`;
+}
+
+function mapRecord(raw: Record<string, unknown>): MedicalRecord {
+  const doctorId = raw.doctorId as { fullName?: string } | undefined;
+  const attachments = raw.attachments as string[] | undefined;
+  const attachment = attachments?.[0];
+  const fileUrl = resolveAttachmentUrl(attachment) ?? resolveAttachmentUrl(raw.fileUrl as string | undefined);
+
+  return {
+    _id: String(raw._id),
+    recordName: String(raw.recordName || raw.diagnosis || "Medical Record"),
+    dept: String(raw.dept || "Internal Med"),
+    doctor: String(doctorId?.fullName || raw.doctor || "N/A"),
+    format: (raw.format as RecordFormat) || "PDF",
+    status: (raw.status as RecordStatus) || "REVIEW",
+    notes: String(raw.prescription || raw.notes || ""),
+    fileUrl,
+    createdAt: String(raw.createdAt || raw.date || new Date().toISOString()),
+  };
+}
+
+function inferFormatFromFile(file: File): RecordFormat {
+  const ext = file.name.split(".").pop()?.toUpperCase();
+  if (ext === "PDF") return "PDF";
+  if (ext === "PNG") return "PNG";
+  if (ext === "JPG" || ext === "JPEG") return "JPG";
+  if (ext === "DCM" || ext === "DICOM") return "DICOM";
+  if (file.type.startsWith("image/")) return "JPG";
+  return "OTHER";
+}
+
+function isImageAttachment(format: RecordFormat, url?: string): boolean {
+  if (format === "JPG" || format === "PNG") return true;
+  return Boolean(url && /\.(jpe?g|png|gif|webp)$/i.test(url));
+}
+
+function isPdfAttachment(format: RecordFormat, url?: string): boolean {
+  if (format === "PDF") return true;
+  return Boolean(url && /\.pdf$/i.test(url));
+}
 
 const TAB_FILTERS: Record<TabKey, (r: MedicalRecord) => boolean> = {
   "All Inventory": () => true,
@@ -105,10 +151,36 @@ function RecordModal({
     status: initial.status ?? "REVIEW",
     notes: initial.notes ?? "",
     fileUrl: initial.fileUrl ?? "",
+    file: null,
   });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const set = (k: keyof FormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(() => {
+    if (form.file) {
+      const url = URL.createObjectURL(form.file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreviewUrl(null);
+  }, [form.file]);
+
+  const set = (k: keyof FormState, v: string | File | null) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    setForm((f) => ({
+      ...f,
+      file,
+      format: inferFormatFromFile(file),
+    }));
+  };
+
   const isView = mode === "view";
+  const displayUrl = previewUrl || form.fileUrl || null;
+  const showImage = displayUrl && (previewUrl ? form.file?.type.startsWith("image/") : isImageAttachment(form.format, form.fileUrl));
+  const showPdf = displayUrl && !showImage && (previewUrl ? form.file?.type === "application/pdf" : isPdfAttachment(form.format, form.fileUrl));
 
   const fieldCls = `w-full h-10 px-3 border rounded-xl text-sm outline-none transition-all font-medium
     ${isView ? "bg-gray-50 text-gray-600 border-gray-100 cursor-default" : "bg-white border-gray-200 focus:border-[#0052cc]"}`;
@@ -192,16 +264,88 @@ function RecordModal({
             </div>
           </div>
 
-          {/* File URL */}
+          {/* Attachment */}
           <div>
-            <label className="text-xs font-bold text-gray-600 block mb-1.5">File URL (optional)</label>
-            <input
-              className={fieldCls}
-              value={form.fileUrl}
-              readOnly={isView}
-              onChange={(e) => set("fileUrl", e.target.value)}
-              placeholder="https://..."
-            />
+            <label className="text-xs font-bold text-gray-600 block mb-1.5">
+              {isView ? "Attachment" : "Upload File (image or PDF)"}
+            </label>
+
+            {isView ? (
+              displayUrl ? (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                  {showImage && (
+                    <img
+                      src={displayUrl}
+                      alt={form.recordName}
+                      className="w-full max-h-72 object-contain bg-white"
+                    />
+                  )}
+                  {showPdf && (
+                    <iframe
+                      src={displayUrl}
+                      title={form.recordName}
+                      className="w-full h-72 bg-white"
+                    />
+                  )}
+                  {!showImage && !showPdf && (
+                    <div className="p-4 flex items-center gap-3">
+                      <FileText size={20} className="text-gray-400 shrink-0" />
+                      <a
+                        href={displayUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-semibold text-[#0052cc] hover:underline truncate"
+                      >
+                        Open attached file
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 font-medium px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl">
+                  No file attached
+                </p>
+              )
+            ) : (
+              <div className="space-y-3">
+                <label className="flex flex-col items-center justify-center gap-2 w-full py-6 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 hover:border-[#0052cc]/40 cursor-pointer transition-colors">
+                  <Upload size={22} className="text-[#0052cc]" />
+                  <span className="text-xs font-bold text-gray-600">
+                    {form.file ? form.file.name : "Click to choose an image or PDF"}
+                  </span>
+                  <span className="text-[10px] text-gray-400">JPG, PNG, or PDF</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,application/pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </label>
+
+                {(previewUrl || form.fileUrl) && (
+                  <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                    {previewUrl && form.file?.type.startsWith("image/") && (
+                      <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain bg-white" />
+                    )}
+                    {previewUrl && form.file?.type === "application/pdf" && (
+                      <div className="p-4 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <FileText size={16} className="text-red-500" />
+                        PDF ready to upload: {form.file.name}
+                      </div>
+                    )}
+                    {!previewUrl && form.fileUrl && isImageAttachment(form.format, form.fileUrl) && (
+                      <img src={form.fileUrl} alt="Current file" className="w-full max-h-48 object-contain bg-white" />
+                    )}
+                    {!previewUrl && form.fileUrl && !isImageAttachment(form.format, form.fileUrl) && (
+                      <div className="p-4 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <FileText size={16} className="text-red-500" />
+                        Current file attached
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notes */}
@@ -283,7 +427,7 @@ function DeleteModal({ name, onClose, onConfirm, deleting }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MedicalRecordsPage() {
-  const { user, token } = useAuth();
+  const { isInitialized } = useAuth();
 
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,8 +435,6 @@ export default function MedicalRecordsPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("All Inventory");
   const [page, setPage] = useState(1);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const bellRef = React.useRef<HTMLButtonElement>(null);
 
   // Modal state
   const [modal, setModal] = useState<{
@@ -303,46 +445,64 @@ export default function MedicalRecordsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const profilePicSrc = user?.profileImage
-    ? `http://localhost:5000${user.profileImage}`
-    : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop";
-
-  // ── API helpers ─────────────────────────────────────────────────────────────
-
-  const authHeaders = useCallback(() => ({
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  }), [token]);
-
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(BASE, { headers: authHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch records");
-      const data = await res.json();
-      setRecords(data.records ?? []);
-    } catch (e: any) {
-      setError(e.message);
+      const res = await api.get("/v1/users/medical-records");
+      const data = res.data;
+      const list = Array.isArray(data) ? data : data?.records ?? data?.data ?? [];
+      setRecords(
+        list.map((item: Record<string, unknown>) => {
+          try {
+            return mapRecord(item);
+          } catch {
+            return null;
+          }
+        }).filter(Boolean) as MedicalRecord[]
+      );
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string }; status?: number }; message?: string };
+      const msg = err.response?.data?.message || err.message;
+      if (err.response?.status === 401) {
+        setError("Session expired. Please sign in again.");
+      } else {
+        setError(msg || "Failed to fetch records");
+      }
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => {
+    if (!isInitialized) return;
+    fetchRecords();
+  }, [isInitialized, fetchRecords]);
 
   const handleSave = async (form: FormState) => {
     setSaving(true);
     try {
-      const isEdit = modal?.mode === "edit";
-      const url = isEdit ? `${BASE}/${modal?.record._id}` : BASE;
-      const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(form) });
-      if (!res.ok) throw new Error("Save failed");
+      const formData = new FormData();
+      formData.append("recordName", form.recordName);
+      formData.append("dept", form.dept);
+      formData.append("format", form.format);
+      formData.append("status", form.status);
+      formData.append("diagnosis", form.recordName);
+      formData.append("prescription", form.notes || "—");
+      if (form.file) {
+        formData.append("file", form.file);
+      }
+
+      if (modal?.mode === "edit" && modal.record._id) {
+        await api.put(`/v1/medical-records/${modal.record._id}`, formData);
+      } else {
+        await api.post("/v1/medical-records", formData);
+      }
       await fetchRecords();
       setModal(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      setError(err.response?.data?.message || err.message || "Save failed");
     } finally {
       setSaving(false);
     }
@@ -352,12 +512,12 @@ export default function MedicalRecordsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${BASE}/${deleteTarget._id}`, { method: "DELETE", headers: authHeaders() });
-      if (!res.ok) throw new Error("Delete failed");
+      await api.delete(`/v1/medical-records/${deleteTarget._id}`);
       await fetchRecords();
       setDeleteTarget(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      setError(err.response?.data?.message || err.message || "Delete failed");
     } finally {
       setDeleting(false);
     }
@@ -388,49 +548,15 @@ export default function MedicalRecordsPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen">
-
-      {/* Header */}
-      <header className="h-20 bg-[#f3f4f6] px-6 md:px-8 flex items-center justify-between shrink-0 border-b border-gray-200/60">
-        <div className="relative w-80 max-w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search EHR, physician, or facility..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200/80 rounded-full text-xs font-medium outline-none text-gray-700 shadow-sm placeholder-gray-400 focus:border-gray-300 transition-all"
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <button
-              ref={bellRef}
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={`p-2 border rounded-full transition-colors shadow-sm ${showNotifications ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-white border-gray-100 hover:bg-gray-50 text-gray-600"}`}
-            >
-              <Bell size={18} strokeWidth={2.5} />
-            </button>
-            <UserNotificationsDropdown
-              open={showNotifications}
-              onClose={() => setShowNotifications(false)}
-              anchorRef={bellRef}
-            />
-          </div>
-          <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1 pr-4 py-1 shadow-sm">
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-blue-100 shrink-0">
-              <img src={profilePicSrc} alt="Profile" className="object-cover w-full h-full" />
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-xs font-bold text-gray-800 leading-tight">{user?.fullName ?? "User"}</p>
-              <p className="text-[10px] text-gray-400 font-semibold">Patient</p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <DashboardTopBar
+        placeholder="Search EHR, physician, or facility..."
+        searchValue={search}
+        onSearchChange={handleSearch}
+      />
 
       {/* Body */}
-      <div className="flex-1 overflow-auto px-6 md:px-8 py-6 space-y-6">
+      <div className="flex-1 overflow-auto px-6 py-6 md:px-8 space-y-6">
 
         {/* Title row */}
         <div>

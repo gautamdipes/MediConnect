@@ -41,6 +41,7 @@ export const updateProfile = async (req: Request, res: Response) => {
   if (profileImage) {
     updateData.profileImage = profileImage;
   }
+  delete updateData.adminProfileImage;
   try {
     const result = await userService.updateUser(userId, updateData);
     return res.status(200).json(result);
