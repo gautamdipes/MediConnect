@@ -20,6 +20,7 @@ import adminChatRoutes        from "./routes/admin/chat.route";
 
 // Hospital Routes
 import hospitalAuthRoutes     from "./routes/hospital/auth.route";
+import hospitalDashboardRoutes from "./routes/hospital/dashboard.route";
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/v1/admin/chat",         adminChatRoutes);
 
 // Hospital routes
 app.use("/api/v1/hospital",           hospitalAuthRoutes);
+app.use("/api/v1/hospital/dashboard", hospitalDashboardRoutes);
 
 app.use(errorHandler);
 
