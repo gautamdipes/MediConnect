@@ -1,9 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AppointmentModel } from "../../models/appointment.model";
 import { DoctorModel } from "../../models/doctor.model";
 import { HospitalModel } from "../../models/hospital.model";
 import { MedicalRecordModel } from "../../models/medical-record.model";
 import { UserRepository } from "../../repositories/user.repository";
+import { generateGeminiText } from "../gemini.client";
 
 const userRepo = new UserRepository();
 
@@ -398,20 +398,9 @@ export class ChatService {
   }
 
   async chat(userId: string, message: string, history: ChatHistoryItem[] = []) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw { status: 500, message: "GEMINI_API_KEY is not configured on the server" };
-    }
-
     const intent = detectIntent(message, history);
     const fullContext = await this.buildPatientContext(userId);
     const scoped = this.scopeContext(fullContext, intent, message);
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-flash-latest",
-      systemInstruction: buildSystemPrompt(intent, scoped as any),
-    });
 
     const guidedUserPrompt =
       intent === "book_appointment"
@@ -434,17 +423,12 @@ export class ChatService {
       { role: "user", parts: [{ text: guidedUserPrompt }] },
     ];
 
-    const result = await model.generateContent({
+    const reply = await generateGeminiText({
+      systemInstruction: buildSystemPrompt(intent, scoped as any),
       contents,
-      generationConfig: {
-        maxOutputTokens: 512,
-        temperature: 0.4,
-      },
+      maxOutputTokens: 512,
+      temperature: 0.4,
     });
-    const reply = result.response.text()?.trim();
-    if (!reply) {
-      throw { status: 502, message: "Empty response from AI" };
-    }
 
     const attachments = pickAttachments(fullContext, intent, message, reply);
 

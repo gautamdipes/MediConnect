@@ -27,6 +27,9 @@ export const sendChatMessage = async (req: Request, res: Response) => {
     if (raw.includes("429") || /quota|rate.?limit/i.test(raw)) {
       status = 429;
       message = "AI quota exceeded. Please wait a minute and try again.";
+    } else if (raw.includes("503") || /high demand|unavailable|overloaded|busy/i.test(raw)) {
+      status = 503;
+      message = "AI is busy right now. Please try again in a few seconds.";
     } else if (raw.includes("API_KEY") || /api key|permission/i.test(raw)) {
       status = 500;
       message = "AI API key is invalid or not configured.";

@@ -1,0 +1,80 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+/** Prefer env model first, then fallbacks when Google returns 503 / overload. */
+export function geminiModelCandidates(): string[] {
+  const preferred = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const fallbacks = [
+    preferred,
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-flash-latest",
+  ];
+  return [...new Set(fallbacks.filter(Boolean))];
+}
+
+function isRetryableGeminiError(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message || err || "");
+  return (
+    msg.includes("503") ||
+    msg.includes("429") ||
+    /high demand|unavailable|overloaded|rate.?limit|quota|try again/i.test(msg)
+  );
+}
+
+export async function generateGeminiText(opts: {
+  systemInstruction: string;
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+  maxOutputTokens?: number;
+  temperature?: number;
+}): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw { status: 500, message: "GEMINI_API_KEY is not configured on the server" };
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const models = geminiModelCandidates();
+  let lastError: unknown;
+
+  for (const modelName of models) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: opts.systemInstruction,
+      });
+
+      const result = await model.generateContent({
+        contents: opts.contents,
+        generationConfig: {
+          maxOutputTokens: opts.maxOutputTokens ?? 512,
+          temperature: opts.temperature ?? 0.4,
+        },
+      });
+
+      const reply = result.response.text()?.trim();
+      if (!reply) {
+        throw { status: 502, message: "Empty response from AI" };
+      }
+      return reply;
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableGeminiError(err)) {
+        throw err;
+      }
+      console.warn(`Gemini model ${modelName} failed, trying next fallback...`, (err as Error)?.message || err);
+    }
+  }
+
+  const raw = String((lastError as { message?: string })?.message || lastError || "");
+  if (raw.includes("429") || /quota|rate.?limit/i.test(raw)) {
+    throw { status: 429, message: "AI quota exceeded. Please wait a minute and try again." };
+  }
+  if (raw.includes("503") || /high demand|unavailable|overloaded/i.test(raw)) {
+    throw {
+      status: 503,
+      message: "AI is busy right now. Please try again in a few seconds.",
+    };
+  }
+  throw lastError;
+}
