@@ -9,15 +9,20 @@ import { useForm } from "react-hook-form";
 
 import { RegisterFormData, registerSchema } from "./schema";
 import { handleRegisterUser } from "@/lib/actions/auth-action";
+import { loginWithGoogle } from "@/lib/api/auth";
+import { useAuth } from "@/app/dashboard/context/AuthContext";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 export default function SignupForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const labelClass = "mb-2 block text-[12px] font-semibold text-[#222]";
   const inputClass =
     "h-[48px] w-full rounded-[6px] border border-[#d1d5db] bg-white px-4 text-[14px] text-[#171717] outline-none transition placeholder:text-[#9ca3af] focus:border-[#0057d9] focus:ring-1 focus:ring-[#0057d9]";
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [googlePending, setGooglePending] = useState(false);
 
   const {
     register,
@@ -44,6 +49,21 @@ export default function SignupForm() {
         setError(err?.message || "Registration failed");
       }
     });
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setError("");
+    setGooglePending(true);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (!result?.token) {
+        throw new Error("Google sign-up failed");
+      }
+      login(result.token, result.user);
+      router.push("/dashboard");
+    } finally {
+      setGooglePending(false);
+    }
   };
 
   return (
@@ -173,15 +193,13 @@ export default function SignupForm() {
 
         <div className="my-8 border-t border-[#e5e7eb]" />
 
-        <button
-          type="button"
+        <GoogleSignInButton
+          label="Sign up with Google"
+          disabled={isSubmitting || isPending || googlePending}
           className="flex h-[48px] w-full items-center justify-center gap-3 rounded-[6px] border border-[#d1d5db] bg-white text-[13px] font-semibold text-[#222] transition hover:bg-gray-50"
-        >
-          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 text-[10px] font-bold text-[#4285f4]">
-            G
-          </span>
-          Sign up with Google
-        </button>
+          onCredential={handleGoogleCredential}
+          onError={setError}
+        />
 
         <p className="mt-5 text-center text-[12px] text-[#6b7280]">
           Already have an account?{" "}

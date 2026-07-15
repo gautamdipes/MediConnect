@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
 
 import { loginSchema, LoginFormData } from "./schema"; 
-import { login as loginApi } from "@/lib/api/auth";
+import { login as loginApi, loginWithGoogle } from "@/lib/api/auth";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
 
   const {
     register,
@@ -28,29 +30,34 @@ export default function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  const completeLogin = async (result: { token: string; user: any }) => {
+    login(result.token, result.user);
+    if (isAdmin) {
+      const adminCheck = await fetch(
+        `http://localhost:5000/api/v1/admin/users?page=1&limit=1`,
+        {
+          headers: { Authorization: `Bearer ${result.token}` },
+        }
+      );
+      if (!adminCheck.ok) {
+        throw new Error("You do not have admin access!");
+      }
+      localStorage.setItem("adminToken", result.token);
+      router.push("/admin/dashboard");
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
   const onSubmit = (data: LoginFormData) => {
     setError("");
 
     startTransition(async () => {
       try {
         const result = await loginApi(data);
-console.log('Login API result:', result);
 
         if (result && result.token) {
-          login(result.token, result.user);
-          if (isAdmin) {
-            const adminCheck = await fetch(`http://localhost:5000/api/v1/admin/users?page=1&limit=1`, {
-              headers: { Authorization: `Bearer ${result.token}` },
-            });
-            if (!adminCheck.ok) {
-              setError("You do not have admin access!");
-              return;
-            }
-            localStorage.setItem("adminToken", result.token);
-            router.push("/admin/dashboard");
-          } else {
-            router.push("/dashboard");
-          }
+          await completeLogin(result);
         } else {
           setError("Login failed");
         }
@@ -58,6 +65,20 @@ console.log('Login API result:', result);
         setError(err?.message || "Login failed");
       }
     });
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setError("");
+    setGooglePending(true);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (!result?.token) {
+        throw new Error("Google sign-in failed");
+      }
+      await completeLogin(result);
+    } finally {
+      setGooglePending(false);
+    }
   };
 
   return (
@@ -186,18 +207,12 @@ console.log('Login API result:', result);
         </div>
 
         {/* Google Authentication Provider alternative */}
-        <button
-          type="button"
-          className="w-full h-11 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2.5 transition-colors shadow-sm"
-        >
-          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-            <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.96 1 12 1 7.35 1 3.4 3.65 1.5 7.5l3.86 3c.9-2.73 3.46-4.46 6.64-4.46z"/>
-            <path fill="#4285F4" d="M23.5 12.25c0-.82-.07-1.6-.2-2.35H12v4.46h6.46c-.28 1.47-1.1 2.72-2.35 3.56l3.66 2.84c2.14-1.98 3.38-4.9 3.38-8.51z"/>
-            <path fill="#FBBC05" d="M5.36 14.5c-.23-.68-.36-1.41-.36-2.17s.13-1.49.36-2.17l-3.86-3C.68 8.71 0 10.28 0 12s.68 3.29 1.5 4.84l3.86-2.84z"/>
-            <path fill="#34A853" d="M12 23c3.24 0 5.97-1.08 7.96-2.91l-3.66-2.84c-1.01.68-2.31 1.09-4.3 1.09-3.18 0-5.74-1.73-6.64-4.46l-3.86 3C3.4 20.35 7.35 23 12 23z"/>
-          </svg>
-          <span>Sign in with Google</span>
-        </button>
+        <GoogleSignInButton
+          label={isAdmin ? "Sign in with Google as Admin" : "Sign in with Google"}
+          disabled={isSubmitting || isPending || googlePending}
+          onCredential={handleGoogleCredential}
+          onError={setError}
+        />
 
         {/* Alternative Route Link */}
         <p className="text-center text-xs font-medium text-gray-400 pt-1">

@@ -23,3 +23,12 @@ export const login = async (data: any) => {
             || 'Login failed');
     }
 }
+
+export const loginWithGoogle = async (idToken: string) => {
+    try {
+        const response = await axiosInstance.post(API.AUTH.GOOGLE, { idToken });
+        return response.data;
+    } catch (error: Error | any) {
+        throw new Error(error?.response?.data?.message || "Google sign-in failed");
+    }
+}
