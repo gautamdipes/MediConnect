@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   ArrowUpRight,
-  BarChart3,
   BedDouble,
   Bell,
   CalendarDays,
@@ -35,7 +34,6 @@ const primaryNavigation: NavigationItem[] = [
   { label: "Dashboard", icon: LayoutDashboard },
   { label: "Patients", icon: Users },
   { label: "Appointments", icon: CalendarDays },
-  { label: "Analytics", icon: BarChart3 },
 ];
 
 const secondaryNavigation: NavigationItem[] = [
@@ -185,9 +183,9 @@ export default function HospitalDashboardPage() {
       return;
     }
     if (label === "Appointments") {
-      document.getElementById("todays-appointments")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setNotice("Showing today’s scheduled appointments.");
-    } else if (label === "Analytics" || label === "Settings") {
+      router.push("/hospital/appointments");
+      return;
+    } else if (label === "Settings") {
       setNotice(`${label} is not available in this portal yet.`);
     }
     setActiveItem(label);

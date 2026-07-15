@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ChevronDown,
   CircleUserRound,
-  ClipboardList,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -52,8 +51,7 @@ const initialPatients: Patient[] = [
 const navigation = [
   { label: "Dashboard", href: "/hospital/dashboard", icon: LayoutDashboard },
   { label: "Patients", href: "/hospital/patients", icon: Users },
-  { label: "Appointments", href: "#", icon: CalendarDays },
-  { label: "Analytics", href: "#", icon: ClipboardList },
+  { label: "Appointments", href: "/hospital/appointments", icon: CalendarDays },
 ];
 
 function StatusBadge({ status }: { status: PatientStatus }) {
