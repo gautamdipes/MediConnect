@@ -46,7 +46,7 @@ async function seed() {
       password: await bcrypt.hash(DEMO_PASSWORD, 10),
       phoneNumber: hospital.phoneNumber || "9800000000",
       role: "hospital",
-      hospitalId: hospital._id,
+      hospitalId: hospital._id as any,
       authProvider: "local",
     });
     console.log("Created hospital user:", DEMO_EMAIL);

@@ -21,9 +21,19 @@ export class HospitalAuthService {
       throw new Error("Invalid email or password");
     }
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    const passwordIsBcryptHash = /^\$2[aby]\$\d{2}\$/.test(user.password);
+    const isPasswordValid = passwordIsBcryptHash
+      ? await bcrypt.compare(data.password, user.password)
+      : data.password === user.password;
+
     if (!isPasswordValid) {
       throw new Error("Invalid email or password");
+    }
+
+    // Upgrade legacy plain-text hospital credentials after the first valid login.
+    if (!passwordIsBcryptHash) {
+      user.password = await bcrypt.hash(data.password, 10);
+      await user.save();
     }
 
     const token = jwt.sign(

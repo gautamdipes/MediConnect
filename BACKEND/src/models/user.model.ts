@@ -1,4 +1,5 @@
 import mongoose, { Document } from "mongoose";
+import bcrypt from "bcryptjs";
 import { IUser } from "../types/user.type";
 
 export interface IUserDocument extends IUser, Document {}
@@ -42,5 +43,30 @@ const userSchema = new mongoose.Schema<IUserDocument>(
   },
   { timestamps: true }
 );
+
+// Keep credential storage safe regardless of which service creates a user.
+// Existing services may already provide a bcrypt hash, so only hash raw values.
+userSchema.pre("save", async function () {
+  if (!this.isModified("password") || !this.password) return;
+
+  if (!/^\$2[aby]\$\d{2}\$/.test(this.password)) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+});
+
+userSchema.pre("findOneAndUpdate", async function () {
+  const update = this.getUpdate() as { password?: string; $set?: { password?: string } } | null;
+  if (!update) return;
+
+  const password = update.password ?? update.$set?.password;
+  if (!password || /^\$2[aby]\$\d{2}\$/.test(password)) return;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  if (update.$set?.password !== undefined) {
+    update.$set.password = hashedPassword;
+  } else {
+    update.password = hashedPassword;
+  }
+});
 
 export const UserModel = mongoose.model<IUserDocument>("User", userSchema);
