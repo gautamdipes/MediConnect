@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bot, X, Send, ArrowRight, Sparkles } from "lucide-react";
+import { Bot, X, Send, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
 
 type Role = "assistant" | "user";
 
@@ -25,60 +25,6 @@ function formatTime(date = new Date()) {
   return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Frontend-only mock replies — replace with API when backend is connected */
-function mockAdminReply(message: string): { content: string; actions?: Message["actions"] } {
-  const text = message.toLowerCase();
-
-  if (/\b(stats?|overview|dashboard|summary|how many|total)\b/i.test(text) || /patients do we have/i.test(text)) {
-    return {
-      content:
-        "Here's a quick admin overview snapshot:\n\n• Patients — manage under Patients\n• Doctors — manage under Doctors\n• Hospitals — manage under Hospitals\n• Appointments — track under Appointments\n\nOpen Overview for live counts. (Live AI data will connect when the backend is enabled.)",
-      actions: [
-        { label: "Overview", href: "/admin/dashboard" },
-        { label: "Patients", href: "/admin/dashboard/patients" },
-      ],
-    };
-  }
-
-  if (/\bdoctor/i.test(text)) {
-    return {
-      content:
-        "I can help you with doctors once the backend is connected.\n\nFor now, open the Doctors page to view, add, or edit staff.\n\nTip: filter by specialty (cardiology, pediatrics, etc.) from that page.",
-      actions: [{ label: "Open Doctors", href: "/admin/dashboard/staff" }],
-    };
-  }
-
-  if (/\bhospital|clinic|facilit/i.test(text)) {
-    return {
-      content:
-        "Hospital and facility management lives in the Hospitals page.\n\nYou can verify facilities, review departments, and check status there.",
-      actions: [{ label: "Open Hospitals", href: "/admin/dashboard/facilities" }],
-    };
-  }
-
-  if (/\bappointment/i.test(text)) {
-    return {
-      content:
-        "Use Appointments to review bookings, statuses, and schedules across the network.\n\nWhen AI backend is connected, I'll summarize recent bookings right here.",
-      actions: [{ label: "Open Appointments", href: "/admin/dashboard/appointments" }],
-    };
-  }
-
-  if (/\bpatient|user/i.test(text)) {
-    return {
-      content:
-        "Patient accounts and profiles are managed under Patients.\n\nYou can search, review status, and update records from that page.",
-      actions: [{ label: "Open Patients", href: "/admin/dashboard/patients" }],
-    };
-  }
-
-  return {
-    content:
-      "I'm your Admin AI Assistant (frontend preview).\n\nAsk me about:\n• System overview / stats\n• Doctors\n• Hospitals\n• Appointments\n• Patients\n\nI'll open the right admin page for you. Full live answers come after backend connection.",
-    actions: [{ label: "Overview", href: "/admin/dashboard" }],
-  };
-}
-
 export function AdminAIChatWidget({
   adminName,
   open,
@@ -99,6 +45,7 @@ export function AdminAIChatWidget({
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const firstName = adminName?.split(" ")[0] || "Admin";
@@ -121,36 +68,77 @@ export function AdminAIChatWidget({
     if (isOpen) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, isOpen]);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: trimmed,
-        time: formatTime(),
-      },
-    ]);
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: trimmed,
+      time: formatTime(),
+    };
+    const next = [...messages, userMsg];
+    setMessages(next);
     setInput("");
+    setError("");
     setLoading(true);
 
-    window.setTimeout(() => {
-      const reply = mockAdminReply(trimmed);
+    try {
+      const token = localStorage.getItem("adminToken");
+      const history = next
+        .filter((m) => m.id !== "welcome")
+        .slice(0, -1)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 60000);
+
+      const res = await fetch("http://localhost:5000/api/v1/admin/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: trimmed, history }),
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || `Request failed (${res.status})`);
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: reply.content,
+          content: String(data.reply || "Sorry, I couldn't generate a response."),
           time: formatTime(),
-          actions: reply.actions,
+          actions: Array.isArray(data.actions) ? data.actions.slice(0, 3) : [],
         },
       ]);
+    } catch (e: unknown) {
+      const err = e as { name?: string; message?: string };
+      const msg =
+        err.name === "AbortError" || /aborted|timeout/i.test(err.message || "")
+          ? "The AI is taking too long. Please try again."
+          : err.message || "Failed to reach the AI assistant";
+      setError(msg);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Sorry — I couldn't process that right now. Please try again in a moment.",
+          time: formatTime(),
+        },
+      ]);
+    } finally {
       setLoading(false);
-    }, 450);
+    }
   };
 
   return (
@@ -182,7 +170,7 @@ export function AdminAIChatWidget({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-black leading-tight">Admin AI Assistant</p>
-              <p className="text-[10px] font-medium text-blue-100">Frontend preview</p>
+              <p className="text-[10px] font-medium text-blue-100">Live · Gemini</p>
             </div>
             <button
               type="button"
@@ -192,6 +180,13 @@ export function AdminAIChatWidget({
               <X size={16} />
             </button>
           </div>
+
+          {error && (
+            <div className="mx-3 mt-2 flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2.5 py-1.5 text-[10px] font-semibold text-red-600">
+              <AlertCircle size={12} />
+              {error}
+            </div>
+          )}
 
           <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
             {messages.map((m) => (
@@ -247,7 +242,7 @@ export function AdminAIChatWidget({
                 <button
                   key={q.label}
                   type="button"
-                  onClick={() => send(q.prompt)}
+                  onClick={() => void send(q.prompt)}
                   className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-[#0052cc]"
                 >
                   {q.label}
@@ -257,7 +252,7 @@ export function AdminAIChatWidget({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                send(input);
+                void send(input);
               }}
               className="flex items-center gap-2"
             >

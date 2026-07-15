@@ -16,6 +16,7 @@ import adminDoctorRoutes      from "./routes/admin/doctor.route";
 import adminAppointmentRoutes from "./routes/admin/appointment.route";
 import adminOverviewRoutes    from "./routes/admin/overview.route";
 import publicRoutes           from "./routes/public.routes";
+import adminChatRoutes        from "./routes/admin/chat.route";
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use("/api/v1/admin/hospitals",    adminHospitalRoutes);
 app.use("/api/v1/admin/doctors",      adminDoctorRoutes);
 app.use("/api/v1/admin/appointments", adminAppointmentRoutes);
 app.use("/api/v1/admin/overview",     adminOverviewRoutes);
+app.use("/api/v1/admin/chat",         adminChatRoutes);
 
 app.use(errorHandler);
 
