@@ -1,25 +1,52 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-/** Prefer env model first, then fallbacks when Google returns 503 / overload. */
+/**
+ * Prefer env model first, then fallbacks when Google returns 503 / overload / 404.
+ * Only includes models listed by ListModels on current Gemini API keys.
+ */
 export function geminiModelCandidates(): string[] {
-  const preferred = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const preferred = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
   const fallbacks = [
     preferred,
-    "gemini-2.0-flash",
+    "gemini-flash-lite-latest",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
     "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash",
     "gemini-flash-latest",
   ];
   return [...new Set(fallbacks.filter(Boolean))];
 }
 
+function errorMessage(err: unknown): string {
+  return String((err as { message?: string })?.message || err || "");
+}
+
 function isRetryableGeminiError(err: unknown): boolean {
-  const msg = String((err as { message?: string })?.message || err || "");
+  const msg = errorMessage(err);
   return (
     msg.includes("503") ||
     msg.includes("429") ||
-    /high demand|unavailable|overloaded|rate.?limit|quota|try again/i.test(msg)
+    msg.includes("404") ||
+    /not found|high demand|unavailable|overloaded|rate.?limit|quota|try again/i.test(msg)
   );
+}
+
+function friendlyGeminiError(err: unknown): { status: number; message: string } {
+  const raw = errorMessage(err);
+  if (raw.includes("429") || /quota|rate.?limit/i.test(raw)) {
+    return { status: 429, message: "AI quota exceeded. Please wait a minute and try again." };
+  }
+  if (raw.includes("503") || /high demand|unavailable|overloaded/i.test(raw)) {
+    return { status: 503, message: "AI is busy right now. Please try again in a few seconds." };
+  }
+  if (raw.includes("404") || /not found/i.test(raw)) {
+    return { status: 502, message: "AI model is unavailable. Please try again shortly." };
+  }
+  if (/API_KEY|api key|permission|401|403/i.test(raw)) {
+    return { status: 500, message: "AI API key is invalid or not configured." };
+  }
+  return { status: 502, message: "Failed to get AI response. Please try again." };
 }
 
 export async function generateGeminiText(opts: {
@@ -60,21 +87,14 @@ export async function generateGeminiText(opts: {
     } catch (err) {
       lastError = err;
       if (!isRetryableGeminiError(err)) {
-        throw err;
+        throw friendlyGeminiError(err);
       }
-      console.warn(`Gemini model ${modelName} failed, trying next fallback...`, (err as Error)?.message || err);
+      console.warn(
+        `Gemini model ${modelName} failed, trying next fallback...`,
+        errorMessage(err).slice(0, 160)
+      );
     }
   }
 
-  const raw = String((lastError as { message?: string })?.message || lastError || "");
-  if (raw.includes("429") || /quota|rate.?limit/i.test(raw)) {
-    throw { status: 429, message: "AI quota exceeded. Please wait a minute and try again." };
-  }
-  if (raw.includes("503") || /high demand|unavailable|overloaded/i.test(raw)) {
-    throw {
-      status: 503,
-      message: "AI is busy right now. Please try again in a few seconds.",
-    };
-  }
-  throw lastError;
+  throw friendlyGeminiError(lastError);
 }
