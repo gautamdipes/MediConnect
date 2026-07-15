@@ -10,5 +10,6 @@ export interface IUser {
   dob?: string;
   address?: string;
   gender?: string;
-  role?: "user" | "admin";
+  role?: "user" | "admin" | "hospital";
+  hospitalId?: string;
 }

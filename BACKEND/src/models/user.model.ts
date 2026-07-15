@@ -30,7 +30,15 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     dob: { type: String },
     address: { type: String },
     gender: { type: String },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    role: {
+      type: String,
+      enum: ["user", "admin", "hospital"],
+      default: "user",
+    },
+    hospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hospital",
+    },
   },
   { timestamps: true }
 );

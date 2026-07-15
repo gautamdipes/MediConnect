@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "seed:hospital": "tsx src/scripts/seed-hospital-user.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
