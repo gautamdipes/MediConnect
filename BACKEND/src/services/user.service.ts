@@ -135,12 +135,23 @@ export class UserService {
       throw new Error("Google sign-in is not configured on the server");
     }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (err: any) {
+      const msg = String(err?.message || "");
+      if (msg.includes("Token used too early") || msg.includes("Token used too late")) {
+        throw new Error(
+          "Your computer clock is out of sync with Google. Turn on automatic time in Windows Settings → Time & language → Date & time, click Sync now, then try again."
+        );
+      }
+      throw new Error(msg || "Invalid Google token");
+    }
 
-    const payload = ticket.getPayload();
     if (!payload?.email || !payload.sub) {
       throw new Error("Invalid Google token");
     }
