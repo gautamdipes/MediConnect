@@ -17,8 +17,6 @@ import {
   MoreHorizontal,
   Search,
   Settings,
-  Siren,
-  Stethoscope,
   Users,
   X,
 } from "lucide-react";
@@ -35,8 +33,6 @@ const primaryNavigation: NavigationItem[] = [
   { label: "Dashboard", icon: LayoutDashboard },
   { label: "Patients", icon: Users },
   { label: "Appointments", icon: CalendarDays },
-  { label: "Doctors", icon: Stethoscope },
-  { label: "Emergency", icon: Siren },
   { label: "Analytics", icon: BarChart3 },
 ];
 
@@ -119,25 +115,13 @@ function HospitalSidebar({
         ))}
       </nav>
 
-      <nav className="mt-7 space-y-1 border-t border-slate-100 pt-5" aria-label="Hospital settings">
+      <nav className="mt-auto space-y-1 border-t border-slate-100 pt-5" aria-label="Hospital settings">
         {secondaryNavigation.map((item) => (
           <NavigationButton key={item.label} item={item} active={activeItem === item.label} onClick={() => onSelect(item.label)} />
         ))}
       </nav>
 
-      <div className="mt-auto rounded-2xl border border-blue-100 bg-blue-50/60 p-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#0057d9] shadow-sm">
-            <Activity size={18} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-800">System status</p>
-            <p className="mt-0.5 text-[11px] font-medium text-emerald-600">All services operational</p>
-          </div>
-        </div>
-      </div>
-
-      <button type="button" className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
+      <button type="button" className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
         <LogOut size={18} strokeWidth={2.2} />
         Log out
       </button>
