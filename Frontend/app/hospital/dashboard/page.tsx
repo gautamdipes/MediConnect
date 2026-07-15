@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   ArrowUpRight,
@@ -164,10 +165,16 @@ function StatCard({
 }
 
 export default function HospitalDashboardPage() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("Dashboard");
 
   const selectNavigation = (label: string) => {
+    if (label === "Patients") {
+      router.push("/hospital/patients");
+      return;
+    }
+
     setActiveItem(label);
     setMobileMenuOpen(false);
   };
