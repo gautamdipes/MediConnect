@@ -1,7 +1,8 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -20,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { createHospitalPatient, getHospitalPatients } from "@/lib/api/hospital";
 
 type PatientStatus = "Active" | "In consultation" | "Follow-up";
 
@@ -182,6 +184,15 @@ export default function HospitalPatientsPage() {
   const [patientList, setPatientList] = useState(initialPatients);
   const [addPatientOpen, setAddPatientOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getHospitalPatients()
+      .then((data) => setPatientList(data.patients.map((patient: any) => ({ id: patient._id, name: patient.fullName, initials: patient.fullName.split(/\s+/).map((word: string) => word[0]).join("").slice(0, 2).toUpperCase(), age: patient.age || 0, gender: patient.gender || "Not specified", phone: patient.phoneNumber || "Not provided", email: patient.email, department: patient.department || patient.latestAppointment?.doctor?.specialization || "General Care", doctor: patient.latestAppointment?.doctor?.fullName || "Unassigned", appointment: patient.latestAppointment ? `${new Date(patient.latestAppointment.date).toLocaleDateString()} · ${patient.latestAppointment.time}` : "Not scheduled", status: patient.latestAppointment?.status === "PENDING" ? "Follow-up" : patient.latestAppointment?.status === "CONFIRMED" ? "In consultation" : "Active", lastVisit: patient.latestAppointment ? new Date(patient.latestAppointment.date).toLocaleDateString() : "New patient", notes: patient.notes || "No clinical notes available." })))
+      )
+      .catch((error) => setNotice(error.response?.data?.message || "Unable to load patients."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredPatients = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -191,7 +202,7 @@ export default function HospitalPatientsPage() {
     });
   }, [patientList, search, statusFilter]);
 
-  const addPatient = (event: FormEvent<HTMLFormElement>) => {
+  const addPatient = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") || "").trim();
@@ -199,9 +210,15 @@ export default function HospitalPatientsPage() {
     const phone = String(data.get("phone") || "").trim();
     if (!name || !email || !phone) return;
     const initials = name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
-    setPatientList((current) => [{ id: `PT-${10042 + current.length + 1}`, name, initials, age: Number(data.get("age")) || 0, gender: String(data.get("gender") || "Not specified"), phone, email, department: String(data.get("department") || "General Care"), doctor: "Unassigned", appointment: "Not scheduled", status: "Active", lastVisit: "New patient", notes: "Patient profile created from the hospital portal." }, ...current]);
-    setAddPatientOpen(false);
-    setNotice(`${name} was added to the patient directory.`);
+    try {
+      const result = await createHospitalPatient({ fullName: name, email, phoneNumber: phone, age: Number(data.get("age")) || undefined, gender: data.get("gender"), department: data.get("department"), notes: "Patient profile created from the hospital portal." });
+      const patient = result.patient;
+      setPatientList((current) => [{ id: patient._id, name: patient.fullName, initials, age: patient.age || 0, gender: patient.gender || "Not specified", phone: patient.phoneNumber, email: patient.email, department: patient.department || "General Care", doctor: "Unassigned", appointment: "Not scheduled", status: "Active", lastVisit: "New patient", notes: patient.notes || "" }, ...current]);
+      setAddPatientOpen(false);
+      setNotice(`${name} was added to the patient directory.`);
+    } catch (error: any) {
+      setNotice(error.response?.data?.message || "Unable to add patient.");
+    }
   };
 
   const logOut = () => {
@@ -238,7 +255,8 @@ export default function HospitalPatientsPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[940px] w-full text-left"><thead><tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400"><th className="px-6 py-3 font-inherit">Patient</th><th className="px-4 py-3 font-inherit">Department</th><th className="px-4 py-3 font-inherit">Next appointment</th><th className="px-4 py-3 font-inherit">Status</th><th className="px-4 py-3 font-inherit">Last visit</th><th className="px-5 py-3" /></tr></thead><tbody className="divide-y divide-slate-50">{filteredPatients.map((patient) => <tr key={patient.id} className="transition hover:bg-slate-50/70"><td className="px-6 py-3.5"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[11px] font-extrabold text-[#0057d9]">{patient.initials}</div><div><p className="text-[13px] font-bold text-slate-800">{patient.name}</p><p className="text-[11px] font-medium text-slate-400">{patient.id} • {patient.age} yrs</p></div></div></td><td className="px-4 py-3.5"><p className="text-[12px] font-bold text-slate-700">{patient.department}</p><p className="mt-0.5 text-[11px] font-medium text-slate-400">{patient.doctor}</p></td><td className="px-4 py-3.5 text-[12px] font-bold text-slate-700">{patient.appointment}</td><td className="px-4 py-3.5"><StatusBadge status={patient.status} /></td><td className="px-4 py-3.5 text-[12px] font-semibold text-slate-500">{patient.lastVisit}</td><td className="px-5 py-3.5"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => setSelectedPatient(patient)} className="rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold text-[#0057d9] hover:bg-blue-50">View details</button><button type="button" className="rounded-lg p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600" aria-label={`More options for ${patient.name}`}><MoreHorizontal size={17} /></button></div></td></tr>)}</tbody></table>
-              {filteredPatients.length === 0 && <div className="flex flex-col items-center justify-center py-16 text-center"><CircleUserRound size={30} className="text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-600">No patients found</p><p className="mt-1 text-xs font-medium text-slate-400">Try changing your search or status filter.</p></div>}
+              {loading && <div className="py-16 text-center text-sm font-semibold text-slate-400">Loading patients…</div>}
+              {!loading && filteredPatients.length === 0 && <div className="flex flex-col items-center justify-center py-16 text-center"><CircleUserRound size={30} className="text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-600">No patients found</p><p className="mt-1 text-xs font-medium text-slate-400">Try changing your search or status filter.</p></div>}
             </div>
           </section>
         </main>

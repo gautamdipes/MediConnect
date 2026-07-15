@@ -1,13 +1,15 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CalendarDays, ChevronDown, Clock3, LayoutDashboard, LogOut, Menu, Plus, Search, Settings, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { createHospitalAppointment, getHospitalAppointments } from "@/lib/api/hospital";
 
 type AppointmentStatus = "Confirmed" | "Pending" | "Checked in" | "Cancelled";
-type Appointment = { id: number; patient: string; initials: string; doctor: string; department: string; time: string; duration: string; status: AppointmentStatus };
+type Appointment = { id: string | number; patient: string; initials: string; doctor: string; department: string; time: string; duration: string; status: AppointmentStatus };
 
 const initialAppointments: Appointment[] = [
   { id: 1, patient: "Aarav Sharma", initials: "AS", doctor: "Dr. Meera Shah", department: "Cardiology", time: "09:30 AM", duration: "30 min", status: "Confirmed" },
@@ -38,21 +40,29 @@ export default function HospitalAppointmentsPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const toAppointment = (appointment: any): Appointment => ({ id: appointment._id, patient: appointment.patientName, initials: appointment.patientName.split(/\s+/).map((part: string) => part[0]).join("").slice(0, 2).toUpperCase(), doctor: appointment.doctorName, department: appointment.department || appointment.reason || "General Care", time: appointment.time, duration: "30 min", status: appointment.status === "COMPLETED" ? "Checked in" : appointment.status === "CONFIRMED" ? "Confirmed" : appointment.status === "CANCELLED" ? "Cancelled" : "Pending" });
+
+  useEffect(() => {
+    getHospitalAppointments().then((data) => setAppointments(data.appointments.map(toAppointment))).catch((error) => setNotice(error.response?.data?.message || "Unable to load appointments."));
+  }, []);
+
   const visibleAppointments = useMemo(() => {
     const term = search.trim().toLowerCase();
     return appointments.filter((appointment) => (status === "All" || appointment.status === status) && (!term || [appointment.patient, appointment.doctor, appointment.department, appointment.time].some((value) => value.toLowerCase().includes(term))));
   }, [appointments, search, status]);
 
   const logOut = () => { localStorage.removeItem("hospitalToken"); router.push("/login"); };
-  const scheduleAppointment = (event: FormEvent<HTMLFormElement>) => {
+  const scheduleAppointment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const patient = String(data.get("patient") || "").trim();
     if (!patient) return;
-    const initials = patient.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-    setAppointments((current) => [...current, { id: Date.now(), patient, initials, doctor: String(data.get("doctor")), department: String(data.get("department")), time: String(data.get("time")), duration: "30 min", status: "Pending" }]);
-    setScheduleOpen(false);
-    setNotice(`Appointment scheduled for ${patient}.`);
+    try {
+      const result = await createHospitalAppointment({ patientName: patient, doctorName: data.get("doctor"), department: data.get("department"), date: data.get("date"), time: data.get("time") });
+      setAppointments((current) => [...current, toAppointment(result.appointment)]);
+      setScheduleOpen(false);
+      setNotice(`Appointment scheduled for ${patient}.`);
+    } catch (error: any) { setNotice(error.response?.data?.message || "Unable to schedule appointment."); }
   };
 
   const sidebar = (mobile = false) => <aside className={`flex h-full w-[272px] flex-col border-r border-slate-100 bg-white px-4 py-5 ${mobile ? "shadow-2xl" : ""}`}><div className="flex items-center justify-between px-2"><BrandLogo size={35} showText subtitle="Hospital Portal" textClassName="text-[18px] font-black tracking-tight text-[#0057d9] leading-none" subtitleClassName="mt-1 text-[10px] font-bold tracking-wide text-slate-400" />{mobile && <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50" aria-label="Close menu"><X size={18} /></button>}</div><nav className="mt-9 space-y-1" aria-label="Hospital navigation"><p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Workspace</p>{navigation.map((item) => { const Icon = item.icon; const active = item.label === "Appointments"; return <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold ${active ? "bg-[#0057d9] text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><Icon size={18} strokeWidth={2.2} />{item.label}</Link>; })}</nav><div className="mt-auto border-t border-slate-100 pt-5"><button onClick={() => setNotice("Settings are not available in this portal yet.")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 hover:bg-slate-50"><Settings size={18} />Settings</button><button onClick={logOut} className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 hover:bg-rose-50 hover:text-rose-600"><LogOut size={18} />Log out</button></div></aside>;
