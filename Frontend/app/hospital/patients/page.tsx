@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   CalendarDays,
@@ -39,7 +40,7 @@ type Patient = {
   notes: string;
 };
 
-const patients: Patient[] = [
+const initialPatients: Patient[] = [
   { id: "PT-10042", name: "Aarav Sharma", initials: "AS", age: 42, gender: "Male", phone: "+977 980-111-8246", email: "aarav.sharma@email.com", department: "Cardiology", doctor: "Dr. Meera Shah", appointment: "Today, 09:30 AM", status: "In consultation", lastVisit: "12 Jun 2026", notes: "Follow-up cardiac consultation. Lab results attached to record." },
   { id: "PT-10043", name: "Sofia Rai", initials: "SR", age: 29, gender: "Female", phone: "+977 981-224-6531", email: "sofia.rai@email.com", department: "General Care", doctor: "Dr. Rohan Gupta", appointment: "Today, 10:15 AM", status: "Active", lastVisit: "08 Jun 2026", notes: "Routine review requested after recent diagnostic tests." },
   { id: "PT-10044", name: "Ritesh Thapa", initials: "RT", age: 56, gender: "Male", phone: "+977 984-887-2930", email: "ritesh.thapa@email.com", department: "Neurology", doctor: "Dr. Anika Patel", appointment: "Today, 11:00 AM", status: "Follow-up", lastVisit: "01 Jun 2026", notes: "Neurology follow-up. Current medication schedule reviewed." },
@@ -65,7 +66,7 @@ function StatusBadge({ status }: { status: PatientStatus }) {
   return <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${styles[status]}`}>{status}</span>;
 }
 
-function HospitalPatientsSidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
+function HospitalPatientsSidebar({ mobile, onClose, onLogout }: { mobile?: boolean; onClose?: () => void; onLogout: () => void }) {
   return (
     <aside className={`flex h-full w-[272px] flex-col border-r border-slate-100 bg-white px-4 py-5 ${mobile ? "shadow-2xl" : ""}`}>
       <div className="flex items-center justify-between px-2">
@@ -92,6 +93,7 @@ function HospitalPatientsSidebar({ mobile, onClose }: { mobile?: boolean; onClos
             <Link
               key={item.label}
               href={item.href}
+              onClick={() => onClose?.()}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold transition-colors ${active ? "bg-[#0057d9] text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
             >
               <Icon size={18} strokeWidth={2.2} />
@@ -106,7 +108,7 @@ function HospitalPatientsSidebar({ mobile, onClose }: { mobile?: boolean; onClos
           <Settings size={18} strokeWidth={2.2} />
           Settings
         </button>
-        <button type="button" className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
+        <button type="button" onClick={onLogout} className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
           <LogOut size={18} strokeWidth={2.2} />
           Log out
         </button>
@@ -115,7 +117,7 @@ function HospitalPatientsSidebar({ mobile, onClose }: { mobile?: boolean; onClos
   );
 }
 
-function PatientDetailsPanel({ patient, onClose }: { patient: Patient; onClose: () => void }) {
+function PatientDetailsPanel({ patient, onClose, onNotice }: { patient: Patient; onClose: () => void; onNotice: (message: string) => void }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px]" aria-label="Close patient details" />
@@ -164,8 +166,8 @@ function PatientDetailsPanel({ patient, onClose }: { patient: Patient; onClose: 
           </section>
 
           <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><FileText size={16} /> View records</button>
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CalendarDays size={16} /> Appointment</button>
+            <button type="button" onClick={() => onNotice(`Medical records for ${patient.name} are ready to review.`)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><FileText size={16} /> View records</button>
+            <button type="button" onClick={() => onNotice(`Appointment workflow opened for ${patient.name}.`)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CalendarDays size={16} /> Appointment</button>
           </div>
         </div>
       </aside>
@@ -174,35 +176,57 @@ function PatientDetailsPanel({ patient, onClose }: { patient: Patient; onClose: 
 }
 
 export default function HospitalPatientsPage() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | PatientStatus>("All");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [patientList, setPatientList] = useState(initialPatients);
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const filteredPatients = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
-    return patients.filter((patient) => {
+    return patientList.filter((patient) => {
       const matchesSearch = !normalizedSearch || [patient.name, patient.id, patient.phone, patient.email, patient.department].some((value) => value.toLowerCase().includes(normalizedSearch));
       return matchesSearch && (statusFilter === "All" || patient.status === statusFilter);
     });
-  }, [search, statusFilter]);
+  }, [patientList, search, statusFilter]);
+
+  const addPatient = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") || "").trim();
+    const email = String(data.get("email") || "").trim();
+    const phone = String(data.get("phone") || "").trim();
+    if (!name || !email || !phone) return;
+    const initials = name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+    setPatientList((current) => [{ id: `PT-${10042 + current.length + 1}`, name, initials, age: Number(data.get("age")) || 0, gender: String(data.get("gender") || "Not specified"), phone, email, department: String(data.get("department") || "General Care"), doctor: "Unassigned", appointment: "Not scheduled", status: "Active", lastVisit: "New patient", notes: "Patient profile created from the hospital portal." }, ...current]);
+    setAddPatientOpen(false);
+    setNotice(`${name} was added to the patient directory.`);
+  };
+
+  const logOut = () => {
+    localStorage.removeItem("hospitalToken");
+    router.push("/login");
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
-      <div className="fixed inset-y-0 left-0 z-30 hidden lg:block"><HospitalPatientsSidebar /></div>
-      {mobileMenuOpen && <div className="fixed inset-0 z-50 lg:hidden"><button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-label="Close menu" /><div className="relative h-full w-[272px]"><HospitalPatientsSidebar mobile onClose={() => setMobileMenuOpen(false)} /></div></div>}
+      <div className="fixed inset-y-0 left-0 z-30 hidden lg:block"><HospitalPatientsSidebar onLogout={logOut} /></div>
+      {mobileMenuOpen && <div className="fixed inset-0 z-50 lg:hidden"><button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-label="Close menu" /><div className="relative h-full w-[272px]"><HospitalPatientsSidebar mobile onClose={() => setMobileMenuOpen(false)} onLogout={logOut} /></div></div>}
 
       <div className="lg:pl-[272px]">
         <header className="sticky top-0 z-20 flex h-[72px] items-center border-b border-slate-100 bg-white/95 px-4 backdrop-blur md:px-7">
           <button type="button" onClick={() => setMobileMenuOpen(true)} className="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Open menu"><Menu size={21} /></button>
-          <div className="hidden max-w-md flex-1 sm:block"><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search patients, appointments..." /></div></div>
-          <div className="ml-auto flex items-center gap-2.5"><button type="button" className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" /></button><div className="hidden h-7 w-px bg-slate-200 sm:block" /><button type="button" className="flex items-center gap-2 text-left"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div><div className="hidden sm:block"><p className="text-xs font-extrabold text-slate-800">City Hospital</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p></div><ChevronDown size={15} className="hidden text-slate-400 sm:block" /></button></div>
+          <div className="hidden max-w-md flex-1 sm:block"><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search patients, appointments..." /></div></div>
+          <div className="ml-auto flex items-center gap-2.5"><button type="button" onClick={() => setNotice("You have 3 new hospital activity updates.")} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" /></button><div className="hidden h-7 w-px bg-slate-200 sm:block" /><button type="button" onClick={() => setNotice("Signed in as City Hospital administrator.")} className="flex items-center gap-2 text-left"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div><div className="hidden sm:block"><p className="text-xs font-extrabold text-slate-800">City Hospital</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p></div><ChevronDown size={15} className="hidden text-slate-400 sm:block" /></button></div>
         </header>
 
         <main className="mx-auto max-w-[1440px] p-4 md:p-7">
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div><p className="text-xs font-bold text-[#0057d9]">Hospital workspace</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 md:text-[28px]">Patients</h1><p className="mt-1 text-sm font-medium text-slate-500">Review and manage your hospital&apos;s patient information.</p></div>
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><UserPlus size={16} /> Add patient</button>
+            <button type="button" onClick={() => setAddPatientOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><UserPlus size={16} /> Add patient</button>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -221,7 +245,9 @@ export default function HospitalPatientsPage() {
           </section>
         </main>
       </div>
-      {selectedPatient && <PatientDetailsPanel patient={selectedPatient} onClose={() => setSelectedPatient(null)} />}
+      {selectedPatient && <PatientDetailsPanel patient={selectedPatient} onClose={() => setSelectedPatient(null)} onNotice={setNotice} />}
+      {addPatientOpen && <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><button type="button" onClick={() => setAddPatientOpen(false)} className="absolute inset-0 bg-slate-950/35" aria-label="Close add patient" /><form onSubmit={addPatient} className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#0057d9]">Patient directory</p><h2 className="mt-1 text-xl font-extrabold text-slate-900">Add patient</h2></div><button type="button" onClick={() => setAddPatientOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50" aria-label="Close"><X size={18} /></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><input required name="name" placeholder="Full name" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 sm:col-span-2" /><input required type="email" name="email" placeholder="Email address" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400" /><input required name="phone" placeholder="Phone number" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400" /><input name="age" type="number" min="0" placeholder="Age" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400" /><select name="gender" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"><option>Not specified</option><option>Female</option><option>Male</option><option>Other</option></select><select name="department" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 sm:col-span-2"><option>General Care</option><option>Cardiology</option><option>Neurology</option><option>Orthopedics</option><option>Dermatology</option></select></div><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setAddPatientOpen(false)} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button><button className="rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">Add patient</button></div></form></div>}
+      {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl"><span>{notice}</span><button onClick={() => setNotice(null)} className="text-slate-300 hover:text-white" aria-label="Dismiss notification"><X size={16} /></button></div>}
     </div>
   );
 }

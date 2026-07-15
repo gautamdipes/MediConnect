@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -85,11 +85,13 @@ function NavigationButton({
 function HospitalSidebar({
   activeItem,
   onSelect,
+  onLogout,
   mobile,
   onClose,
 }: {
   activeItem: string;
   onSelect: (label: string) => void;
+  onLogout: () => void;
   mobile?: boolean;
   onClose?: () => void;
 }) {
@@ -123,7 +125,7 @@ function HospitalSidebar({
         ))}
       </nav>
 
-      <button type="button" className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
+      <button type="button" onClick={onLogout} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
         <LogOut size={18} strokeWidth={2.2} />
         Log out
       </button>
@@ -168,28 +170,46 @@ export default function HospitalDashboardPage() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("Dashboard");
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const visibleAppointments = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return appointments;
+    return appointments.filter((appointment) => [appointment.patient, appointment.doctor, appointment.type, appointment.status, appointment.time].some((value) => value.toLowerCase().includes(term)));
+  }, [search]);
 
   const selectNavigation = (label: string) => {
     if (label === "Patients") {
       router.push("/hospital/patients");
       return;
     }
-
+    if (label === "Appointments") {
+      document.getElementById("todays-appointments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setNotice("Showing today’s scheduled appointments.");
+    } else if (label === "Analytics" || label === "Settings") {
+      setNotice(`${label} is not available in this portal yet.`);
+    }
     setActiveItem(label);
     setMobileMenuOpen(false);
+  };
+
+  const logOut = () => {
+    localStorage.removeItem("hospitalToken");
+    router.push("/login");
   };
 
   return (
     <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
       <div className="hidden fixed inset-y-0 left-0 z-30 lg:block">
-        <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} />
+        <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} onLogout={logOut} />
       </div>
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} />
           <div className="relative h-full w-[272px]">
-            <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} mobile onClose={() => setMobileMenuOpen(false)} />
+            <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} onLogout={logOut} mobile onClose={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}
@@ -202,11 +222,11 @@ export default function HospitalDashboardPage() {
           <div className="hidden max-w-md flex-1 sm:block">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search patients, appointments..." />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search today’s appointments..." />
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2.5">
-            <button type="button" className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications">
+            <button type="button" onClick={() => setNotice("You have 3 new hospital activity updates.")} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications">
               <Bell size={17} />
               <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
@@ -229,7 +249,7 @@ export default function HospitalDashboardPage() {
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 md:text-[28px]">Good morning, City Hospital</h1>
               <p className="mt-1 text-sm font-medium text-slate-500">Here&apos;s what&apos;s happening across your hospital today.</p>
             </div>
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+            <button type="button" onClick={() => { document.getElementById("todays-appointments")?.scrollIntoView({ behavior: "smooth", block: "start" }); setNotice("Calendar view focused on today’s appointments."); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
               <CalendarDays size={16} />
               View calendar
             </button>
@@ -243,13 +263,13 @@ export default function HospitalDashboardPage() {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm xl:col-span-2">
+            <section id="todays-appointments" className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm xl:col-span-2">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-6">
                 <div>
                   <h2 className="text-base font-extrabold text-slate-900">Today&apos;s appointments</h2>
                   <p className="mt-0.5 text-xs font-medium text-slate-400">Tuesday, June 16 • 42 scheduled</p>
                 </div>
-                <button type="button" className="text-xs font-extrabold text-[#0057d9] hover:text-blue-700">View all</button>
+                <button type="button" onClick={() => router.push("/hospital/patients")} className="text-xs font-extrabold text-[#0057d9] hover:text-blue-700">View patients</button>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-[680px] w-full text-left">
@@ -263,7 +283,7 @@ export default function HospitalDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {appointments.map((appointment) => (
+                    {visibleAppointments.map((appointment) => (
                       <tr key={appointment.patient} className="transition hover:bg-slate-50/70">
                         <td className="px-6 py-3.5">
                           <div className="flex items-center gap-3">
@@ -279,11 +299,12 @@ export default function HospitalDashboardPage() {
                         <td className="px-4 py-3.5">
                           <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${appointment.status === "Confirmed" ? "bg-emerald-50 text-emerald-600" : appointment.status === "Checked in" ? "bg-blue-50 text-[#0057d9]" : "bg-amber-50 text-amber-600"}`}>{appointment.status}</span>
                         </td>
-                        <td className="px-5 py-3.5"><button type="button" className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600" aria-label={`More options for ${appointment.patient}`}><MoreHorizontal size={17} /></button></td>
+                        <td className="px-5 py-3.5"><button type="button" onClick={() => setNotice(`${appointment.patient}: ${appointment.status} at ${appointment.time} with ${appointment.doctor}.`)} className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600" aria-label={`More options for ${appointment.patient}`}><MoreHorizontal size={17} /></button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                {visibleAppointments.length === 0 && <p className="px-6 py-10 text-center text-sm font-semibold text-slate-400">No appointments match your search.</p>}
               </div>
             </section>
 
@@ -307,7 +328,7 @@ export default function HospitalDashboardPage() {
               </section>
 
               <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between"><h2 className="text-base font-extrabold text-slate-900">Recent activity</h2><button type="button" className="text-xs font-extrabold text-[#0057d9]">See all</button></div>
+                <div className="flex items-center justify-between"><h2 className="text-base font-extrabold text-slate-900">Recent activity</h2><button type="button" onClick={() => setNotice("All recent activity is displayed below.")} className="text-xs font-extrabold text-[#0057d9]">See all</button></div>
                 <div className="mt-4 space-y-4">
                   {activities.map((activity) => {
                     const Icon = activity.icon;
@@ -319,6 +340,7 @@ export default function HospitalDashboardPage() {
           </div>
         </main>
       </div>
+      {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl"><span>{notice}</span><button onClick={() => setNotice(null)} className="text-slate-300 hover:text-white" aria-label="Dismiss notification"><X size={16} /></button></div>}
     </div>
   );
 }
