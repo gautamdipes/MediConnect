@@ -1,6 +1,7 @@
 import { AppointmentModel } from "../../models/appointment.model";
 import { MedicalRecordModel } from "../../models/medical-record.model";
 import { UserModel } from "../../models/user.model";
+import { HospitalPatientModel } from "../../models/hospital-patient.model";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -44,13 +45,17 @@ export class HospitalPatientService {
       filter.$or = [{ fullName: pattern }, { email: pattern }, { phoneNumber: pattern }];
     }
 
-    const [total, patients] = await Promise.all([
+    const [total, patients, hospitalPatients] = await Promise.all([
       UserModel.countDocuments(filter),
       UserModel.find(filter)
         .select("fullName email phoneNumber dob address gender profileImage")
         .sort({ fullName: 1 })
         .skip((page - 1) * limit)
         .limit(limit),
+      HospitalPatientModel.find({
+        hospitalId,
+        ...(search ? { $or: [{ fullName: new RegExp(escapeRegex(search), "i") }, { email: new RegExp(escapeRegex(search), "i") }, { phoneNumber: new RegExp(escapeRegex(search), "i") }] } : {}),
+      }).sort({ fullName: 1 }),
     ]);
 
     const pagePatientIds = patients.map((patient) => patient._id);
@@ -87,21 +92,38 @@ export class HospitalPatientService {
     });
 
     return {
-      patients: patients.map((patient) => {
+      patients: [...patients.map((patient) => {
         const summary = appointmentSummary.get(String(patient._id));
         return {
           ...serializePatient(patient),
           appointmentCount: summary?.appointmentCount || 0,
           latestAppointment: summary?.latestAppointment || null,
         };
-      }),
+      }), ...hospitalPatients.map((patient: any) => ({
+        _id: patient._id,
+        fullName: patient.fullName,
+        email: patient.email,
+        phoneNumber: patient.phoneNumber,
+        age: patient.age || null,
+        gender: patient.gender || null,
+        department: patient.department || "General Care",
+        notes: patient.notes || "",
+        appointmentCount: 0,
+        latestAppointment: null,
+      }))],
       meta: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total + hospitalPatients.length,
+        totalPages: Math.ceil((total + hospitalPatients.length) / limit),
       },
     };
+  }
+
+  async createPatient(hospitalId: string, payload: { fullName?: string; email?: string; phoneNumber?: string; age?: number; gender?: string; department?: string; notes?: string }) {
+    if (!payload.fullName?.trim() || !payload.email?.trim() || !payload.phoneNumber?.trim()) throw { status: 400, message: "Name, email, and phone number are required" };
+    const patient = await HospitalPatientModel.create({ hospitalId, fullName: payload.fullName.trim(), email: payload.email.trim(), phoneNumber: payload.phoneNumber.trim(), age: payload.age, gender: payload.gender, department: payload.department, notes: payload.notes });
+    return { _id: patient._id, fullName: patient.fullName, email: patient.email, phoneNumber: patient.phoneNumber, age: patient.age || null, gender: patient.gender || null, department: patient.department, notes: patient.notes, appointmentCount: 0, latestAppointment: null };
   }
 
   async getPatientDetails(hospitalId: string, patientId: string) {

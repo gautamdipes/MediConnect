@@ -20,6 +20,18 @@ export const listHospitalPatients = async (req: Request, res: Response) => {
   }
 };
 
+/** POST /api/v1/hospital/patients */
+export const createHospitalPatient = async (req: Request, res: Response) => {
+  try {
+    const hospitalId = (req as any).hospitalId;
+    if (!hospitalId) return res.status(401).json({ message: "Unauthorized" });
+    const patient = await hospitalPatientService.createPatient(String(hospitalId), req.body);
+    return res.status(201).json({ patient });
+  } catch (err: any) {
+    return res.status(err.status || 500).json({ message: err.message || "Unable to create patient" });
+  }
+};
+
 /** GET /api/v1/hospital/patients/:patientId */
 export const getHospitalPatient = async (req: Request<{ patientId: string }>, res: Response) => {
   try {
