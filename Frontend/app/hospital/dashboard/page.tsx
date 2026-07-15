@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Search,
   Settings,
+  Stethoscope,
   Users,
   X,
 } from "lucide-react";
