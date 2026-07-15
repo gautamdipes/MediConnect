@@ -7,8 +7,24 @@ const userSchema = new mongoose.Schema<IUserDocument>(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    phoneNumber: { type: String, required: true },
+    password: {
+      type: String,
+      required: function (this: IUserDocument) {
+        return this.authProvider !== "google";
+      },
+    },
+    phoneNumber: {
+      type: String,
+      required: function (this: IUserDocument) {
+        return this.authProvider !== "google";
+      },
+    },
+    googleId: { type: String, unique: true, sparse: true },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
     profileImage: { type: String },
     adminProfileImage: { type: String },
     dob: { type: String },

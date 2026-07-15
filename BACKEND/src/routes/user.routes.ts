@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, uploadProfileImage, updateUser } from "../controllers/user.controller";
+import { registerUser, loginUser, googleLoginUser, uploadProfileImage, updateUser } from "../controllers/user.controller";
 import { getMedicalRecords } from "../controllers/medical-record.controller";
 import { authMiddleware } from "../middleware/authorized.middleware";
 import { uploads } from "../middleware/upload.middleware";
@@ -21,6 +21,7 @@ const userRepo = new UserRepository();
 // Auth
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/google", googleLoginUser);
 router.post("/auth/profile/upload", authMiddleware, uploads.single("file"), uploadProfileImage);
 
 // Profile

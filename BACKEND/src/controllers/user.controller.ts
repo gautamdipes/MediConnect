@@ -28,6 +28,19 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
+export const googleLoginUser = async (req: Request, res: Response) => {
+  const idToken = req.body?.idToken || req.body?.credential;
+  if (!idToken) {
+    return res.status(400).json({ message: "Google ID token is required" });
+  }
+  try {
+    const result = await userService.loginWithGoogle(idToken);
+    return res.status(200).json(result);
+  } catch (err: any) {
+    return res.status(401).json({ message: err.message || "Google sign-in failed" });
+  }
+};
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;

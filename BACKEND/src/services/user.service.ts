@@ -2,12 +2,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import fs from "fs/promises";
 import path from "path";
+import { OAuth2Client } from "google-auth-library";
 import { UserRepository } from "../repositories/user.repository";
 import { JWT_SECRET } from "../config/constant";
 // import { CLIENT_URL, SECRET_KEY } from "../config/constant";
 // import { sendEmail } from "../config/email";
 
 const userRepository = new UserRepository();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export class UserService {
   checkPassword(userId: string, currentPassword: any) {
@@ -104,6 +106,12 @@ export class UserService {
       );
     }
 
+    if (!user.password) {
+      throw new Error(
+        "This account uses Google sign-in. Please continue with Google."
+      );
+    }
+
     const isPasswordValid =
       await bcrypt.compare(
         data.password,
@@ -116,6 +124,63 @@ export class UserService {
       );
     }
 
+    return this.issueAuthResponse(user);
+  }
+
+  // ---------------------------------------------------------------
+  // Google sign-in – verify ID token, find or create user, return JWT
+  // ---------------------------------------------------------------
+  async loginWithGoogle(idToken: string) {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new Error("Google sign-in is not configured on the server");
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.sub) {
+      throw new Error("Invalid Google token");
+    }
+
+    if (payload.email_verified === false) {
+      throw new Error("Google email is not verified");
+    }
+
+    let user =
+      (await userRepository.findByGoogleId(payload.sub)) ||
+      (await userRepository.findByEmail(payload.email));
+
+    if (user) {
+      const updates: Record<string, string> = {};
+      if (!user.googleId) updates.googleId = payload.sub;
+      if (user.authProvider !== "google" && !user.password) {
+        updates.authProvider = "google";
+      }
+      if (payload.picture && !user.profileImage) {
+        updates.profileImage = payload.picture;
+      }
+      if (Object.keys(updates).length > 0) {
+        user = (await userRepository.updateUser(String(user._id), updates))!;
+      }
+    } else {
+      user = await userRepository.createUser({
+        fullName: payload.name || payload.email.split("@")[0],
+        email: payload.email,
+        googleId: payload.sub,
+        authProvider: "google",
+        phoneNumber: "",
+        profileImage: payload.picture,
+        role: "user",
+      });
+    }
+
+    return this.issueAuthResponse(user);
+  }
+
+  private issueAuthResponse(user: any) {
     const token = jwt.sign(
       {
         userId: user._id,
@@ -134,6 +199,8 @@ export class UserService {
         fullName: user.fullName,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        profileImage: user.profileImage,
+        role: user.role,
       },
     };
   }
@@ -173,6 +240,12 @@ export class UserService {
 
     if (!user) {
       throw new Error("User not found");
+    }
+
+    if (!user.password) {
+      throw new Error(
+        "This account uses Google sign-in and has no password set"
+      );
     }
 
     const isPasswordValid =
