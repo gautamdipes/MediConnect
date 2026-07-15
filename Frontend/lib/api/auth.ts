@@ -32,3 +32,12 @@ export const loginWithGoogle = async (idToken: string) => {
         throw new Error(error?.response?.data?.message || "Google sign-in failed");
     }
 }
+
+export const hospitalLogin = async (data: { email: string; password: string }) => {
+    try {
+        const response = await axiosInstance.post(API.AUTH.HOSPITAL_LOGIN, data);
+        return response.data;
+    } catch (error: Error | any) {
+        throw new Error(error?.response?.data?.message || "Hospital login failed");
+    }
+}

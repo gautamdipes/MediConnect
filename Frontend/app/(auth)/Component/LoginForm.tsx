@@ -8,9 +8,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
 
-import { loginSchema, LoginFormData } from "./schema"; 
-import { login as loginApi, loginWithGoogle } from "@/lib/api/auth";
+import { loginSchema, LoginFormData } from "./schema";
+import { login as loginApi, loginWithGoogle, hospitalLogin } from "@/lib/api/auth";
 import GoogleSignInButton from "./GoogleSignInButton";
+
+type PortalMode = "user" | "admin" | "hospital";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -18,7 +20,7 @@ export default function LoginForm() {
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [portalMode, setPortalMode] = useState<PortalMode>("user");
   const [showPassword, setShowPassword] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
 
@@ -32,7 +34,8 @@ export default function LoginForm() {
 
   const completeLogin = async (result: { token: string; user: any }) => {
     login(result.token, result.user);
-    if (isAdmin) {
+
+    if (portalMode === "admin") {
       const adminCheck = await fetch(
         `http://localhost:5000/api/v1/admin/users?page=1&limit=1`,
         {
@@ -43,10 +46,21 @@ export default function LoginForm() {
         throw new Error("You do not have admin access!");
       }
       localStorage.setItem("adminToken", result.token);
+      localStorage.removeItem("hospitalToken");
       router.push("/admin/dashboard");
-    } else {
-      router.push("/dashboard");
+      return;
     }
+
+    if (portalMode === "hospital") {
+      localStorage.setItem("hospitalToken", result.token);
+      localStorage.removeItem("adminToken");
+      router.push("/hospital/dashboard");
+      return;
+    }
+
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("hospitalToken");
+    router.push("/dashboard");
   };
 
   const onSubmit = (data: LoginFormData) => {
@@ -54,7 +68,10 @@ export default function LoginForm() {
 
     startTransition(async () => {
       try {
-        const result = await loginApi(data);
+        const result =
+          portalMode === "hospital"
+            ? await hospitalLogin(data)
+            : await loginApi(data);
 
         if (result && result.token) {
           await completeLogin(result);
@@ -68,6 +85,11 @@ export default function LoginForm() {
   };
 
   const handleGoogleCredential = async (idToken: string) => {
+    if (portalMode === "hospital") {
+      setError("Hospital portal uses email and password only for now.");
+      return;
+    }
+
     setError("");
     setGooglePending(true);
     try {
@@ -81,10 +103,29 @@ export default function LoginForm() {
     }
   };
 
+  const submitLabel =
+    portalMode === "admin"
+      ? "Sign In as Admin"
+      : portalMode === "hospital"
+        ? "Sign In as Hospital"
+        : "Sign In";
+
+  const toggleClass = (mode: PortalMode) => {
+    const active = portalMode === mode;
+    if (mode === "admin" && active) {
+      return "bg-[#0057d9] text-white shadow-sm";
+    }
+    if (mode === "hospital" && active) {
+      return "bg-[#0057d9] text-white shadow-sm";
+    }
+    if (mode === "user" && active) {
+      return "bg-white text-gray-900 shadow-sm";
+    }
+    return "text-gray-500 hover:text-gray-900";
+  };
+
   return (
     <div className="flex flex-col justify-center w-full max-w-md mx-auto py-6">
-      
-      {/* Header Titles */}
       <div>
         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
           Login Portal
@@ -94,41 +135,37 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {/* Segmented User / Admin Toggle Row */}
       <div className="mt-6 flex bg-gray-100 p-1 rounded-xl border border-gray-200/40 w-full">
         <button
           type="button"
-          onClick={() => setIsAdmin(false)}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-            !isAdmin 
-              ? "bg-white text-gray-900 shadow-sm" 
-              : "text-gray-500 hover:text-gray-900"
-          }`}
+          onClick={() => setPortalMode("user")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("user")}`}
         >
-          User Portal
+          User
         </button>
         <button
           type="button"
-          onClick={() => setIsAdmin(true)}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-            isAdmin 
-              ? "bg-[#0057d9] text-white shadow-sm" 
-              : "text-gray-500 hover:text-gray-900"
-          }`}
+          onClick={() => setPortalMode("admin")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("admin")}`}
         >
-          Admin Control
+          Admin
+        </button>
+        <button
+          type="button"
+          onClick={() => setPortalMode("hospital")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("hospital")}`}
+        >
+          Hospital
         </button>
       </div>
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        {/* Error Notification Alert */}
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-100 p-3.5 text-xs font-semibold text-red-600">
             {error}
           </div>
         )}
 
-        {/* Work Email Field */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-700 block">
             Work Email
@@ -146,7 +183,6 @@ export default function LoginForm() {
           )}
         </div>
 
-        {/* Password Field */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-700 block">
             Password
@@ -173,7 +209,6 @@ export default function LoginForm() {
           )}
         </div>
 
-        {/* Utility Functions */}
         <div className="flex items-center justify-between text-xs font-bold pt-1">
           <label className="flex items-center gap-2 text-gray-500 cursor-pointer select-none">
             <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-[#0057d9]" />
@@ -184,7 +219,6 @@ export default function LoginForm() {
           </Link>
         </div>
 
-        {/* Action Button Gateway */}
         <button
           type="submit"
           disabled={isSubmitting || isPending}
@@ -194,33 +228,44 @@ export default function LoginForm() {
             <span>Signing in...</span>
           ) : (
             <>
-              <span>{isAdmin ? "Sign In as Admin" : "Sign In"}</span>
+              <span>{submitLabel}</span>
               <LogIn size={15} strokeWidth={2.5} />
             </>
           )}
         </button>
 
-        {/* Separator Decorator */}
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-          <span className="relative bg-white px-3 text-[10px] uppercase font-bold tracking-wider text-gray-300">or</span>
-        </div>
+        {portalMode !== "hospital" && (
+          <>
+            <div className="relative my-4 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-100" />
+              </div>
+              <span className="relative bg-white px-3 text-[10px] uppercase font-bold tracking-wider text-gray-300">
+                or
+              </span>
+            </div>
 
-        {/* Google Authentication Provider alternative */}
-        <GoogleSignInButton
-          label={isAdmin ? "Sign in with Google as Admin" : "Sign in with Google"}
-          disabled={isSubmitting || isPending || googlePending}
-          onCredential={handleGoogleCredential}
-          onError={setError}
-        />
+            <GoogleSignInButton
+              label={
+                portalMode === "admin"
+                  ? "Sign in with Google as Admin"
+                  : "Sign in with Google"
+              }
+              disabled={isSubmitting || isPending || googlePending}
+              onCredential={handleGoogleCredential}
+              onError={setError}
+            />
+          </>
+        )}
 
-        {/* Alternative Route Link */}
-        <p className="text-center text-xs font-medium text-gray-400 pt-1">
-          Don't have an account?{" "}
-          <Link href="/signup" className="font-bold text-[#0057d9] hover:underline">
-            Request Access
-          </Link>
-        </p>
+        {portalMode === "user" && (
+          <p className="text-center text-xs font-medium text-gray-400 pt-1">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="font-bold text-[#0057d9] hover:underline">
+              Request Access
+            </Link>
+          </p>
+        )}
       </form>
     </div>
   );
