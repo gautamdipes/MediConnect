@@ -12,6 +12,7 @@ import {
   cancelMyAppointment,
   getDashboardOverview,
 } from "../controllers/user/appointment.controller";
+import { sendChatMessage } from "../controllers/user/chat.controller";
 import { UserRepository } from "../repositories/user.repository";
 
 const router = Router();
@@ -61,5 +62,8 @@ router.patch("/appointments/:id/cancel", authMiddleware, cancelMyAppointment);
 // Browse
 router.get("/hospitals", authMiddleware, listHospitals);
 router.get("/doctors", authMiddleware, listDoctors);
+
+// AI Chat
+router.post("/chat", authMiddleware, sendChatMessage);
 
 export default router;
