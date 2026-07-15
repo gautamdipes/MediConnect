@@ -20,6 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/app/dashboard/context/AuthContext";
+import { api } from "@/lib/proxy";
 import { DashboardTopBar } from "../components/DashboardTopBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -28,8 +29,9 @@ type MessageRole = "assistant" | "user";
 
 interface ChatAttachment {
   name: string;
-  size: string;
-  type: "pdf" | "image";
+  size?: string;
+  url?: string;
+  type: "pdf" | "image" | "file";
 }
 
 interface ChatMessage {
@@ -37,7 +39,8 @@ interface ChatMessage {
   role: MessageRole;
   content: string;
   time: string;
-  attachment?: ChatAttachment;
+  attachments?: ChatAttachment[];
+  actions?: { label: string; href: string }[];
 }
 
 interface RecentChat {
@@ -47,40 +50,6 @@ interface RecentChat {
   icon: "chat" | "pill";
 }
 
-// ── Mock seed data (frontend-only until backend is connected) ─────────────────
-
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: "1",
-    role: "assistant",
-    content: "Hello! How can I assist you with your health questions, finding doctors or hospitals, or booking care today?",
-    time: "09:12 AM",
-  },
-  {
-    id: "2",
-    role: "user",
-    content: "Can you check the latest lab reports for patient Sarah Miller?",
-    time: "09:15 AM",
-  },
-  {
-    id: "3",
-    role: "assistant",
-    content: "I've found the most recent Blood Panel from Dec 12. Would you like me to highlight any abnormal values?",
-    time: "09:15 AM",
-    attachment: {
-      name: "Sarah_Miller_Lab_Dec23.pdf",
-      size: "1.2 MB",
-      type: "pdf",
-    },
-  },
-];
-
-const RECENT_CHATS: RecentChat[] = [
-  { id: "1", title: "Migraine symptoms...", time: "Yesterday", icon: "chat" },
-  { id: "2", title: "Vitamin D dosage qu...", time: "2 days ago", icon: "pill" },
-  { id: "3", title: "Nearest cardiology clinic", time: "3 days ago", icon: "chat" },
-];
-
 const QUICK_ACTIONS = [
   { label: "Check Symptoms", icon: Activity, prompt: "I'd like to check my symptoms." },
   { label: "Find Doctor", icon: Stethoscope, prompt: "Help me find a doctor near me." },
@@ -88,38 +57,25 @@ const QUICK_ACTIONS = [
   { label: "Book Appointment", icon: CalendarCheck, prompt: "I want to book an appointment." },
 ];
 
+const DEFAULT_RECENT: RecentChat[] = [
+  { id: "1", title: "Migraine symptoms...", time: "Yesterday", icon: "chat" },
+  { id: "2", title: "Vitamin D dosage qu...", time: "2 days ago", icon: "pill" },
+  { id: "3", title: "Nearest cardiology clinic", time: "3 days ago", icon: "chat" },
+];
+
 function formatTime(date = new Date()) {
   return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-function mockAssistantReply(userText: string): ChatMessage {
-  const lower = userText.toLowerCase();
-  let content =
-    "I'm here to help with general health guidance, finding care, and understanding your records. How else can I assist you?";
+function resolveFileUrl(url?: string) {
+  if (!url) return undefined;
+  if (url.startsWith("http")) return url;
+  return url.startsWith("/") ? url : `/${url}`;
+}
 
-  if (lower.includes("symptom")) {
-    content =
-      "Tell me what symptoms you're experiencing — when they started, how severe they are, and any other details. I'll help you understand possible next steps. This is not a diagnosis.";
-  } else if (lower.includes("doctor")) {
-    content =
-      "I can help you find doctors by specialty or location. Which type of doctor are you looking for, and what city or area should I search?";
-  } else if (lower.includes("hospital")) {
-    content =
-      "I can look up hospitals in your area. Share your city or zip code and whether you need emergency, specialty, or general care.";
-  } else if (lower.includes("appointment") || lower.includes("book")) {
-    content =
-      "You can book an appointment from the Appointments page. Would you like me to guide you through choosing a doctor and time slot?";
-  } else if (lower.includes("lab") || lower.includes("report")) {
-    content =
-      "I found a recent lab report in your records. Would you like a summary of key values or help understanding what they mean?";
-  }
-
-  return {
-    id: crypto.randomUUID(),
-    role: "assistant",
-    content,
-    time: formatTime(),
-  };
+function truncateTitle(text: string, max = 28) {
+  const clean = text.trim();
+  return clean.length > max ? `${clean.slice(0, max)}...` : clean;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -146,22 +102,38 @@ function UserAvatar({ src, name }: { src?: string; name?: string }) {
 }
 
 function AttachmentCard({ attachment }: { attachment: ChatAttachment }) {
+  const href = resolveFileUrl(attachment.url);
+  const isImage = attachment.type === "image";
+
   return (
-    <div className="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-500">
-        <FileText size={18} />
+    <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      {isImage && href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="block">
+          <img src={href} alt={attachment.name} className="max-h-48 w-full object-contain bg-gray-50" />
+        </a>
+      ) : null}
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-500">
+          <FileText size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[12px] font-bold text-gray-800">{attachment.name}</p>
+          <p className="text-[10px] font-medium text-gray-400">
+            {attachment.size || (attachment.type === "pdf" ? "PDF" : "File")}
+          </p>
+        </div>
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-[#0052cc]"
+            title="Open / Download"
+          >
+            <Download size={16} />
+          </a>
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-bold text-gray-800">{attachment.name}</p>
-        <p className="text-[10px] font-medium text-gray-400">{attachment.size}</p>
-      </div>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-[#0052cc]"
-        title="Download"
-      >
-        <Download size={16} />
-      </button>
     </div>
   );
 }
@@ -179,22 +151,34 @@ function ChatBubble({
 
   return (
     <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-      {isUser ? (
-        <UserAvatar src={userAvatar} name={userName} />
-      ) : (
-        <BotAvatar />
-      )}
+      {isUser ? <UserAvatar src={userAvatar} name={userName} /> : <BotAvatar />}
 
-      <div className={`max-w-[85%] sm:max-w-[75%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+      <div className={`flex max-w-[85%] flex-col sm:max-w-[75%] ${isUser ? "items-end" : "items-start"}`}>
         <div
-          className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
+          className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap ${
             isUser
               ? "rounded-tr-md bg-[#0052cc] text-white"
               : "rounded-tl-md border border-gray-100 bg-[#f3f4f6] text-gray-700"
           }`}
         >
           <p>{message.content}</p>
-          {message.attachment && <AttachmentCard attachment={message.attachment} />}
+          {message.attachments?.map((att, i) => (
+            <AttachmentCard key={`${att.name}-${i}`} attachment={att} />
+          ))}
+          {!!message.actions?.length && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {message.actions.map((action) => (
+                <Link
+                  key={action.href + action.label}
+                  href={action.href}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#0052cc] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700"
+                >
+                  {action.label}
+                  <ArrowRight size={12} />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         <span className="mt-1 px-1 text-[10px] font-semibold text-gray-400">{message.time}</span>
       </div>
@@ -206,13 +190,16 @@ function ChatBubble({
 
 export default function AIChatbotPage() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const firstName = user?.fullName?.split(" ")[0] || "there";
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState("");
+  const [recentChats, setRecentChats] = useState<RecentChat[]>(DEFAULT_RECENT);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const firstName = user?.fullName?.split(" ")[0] || "there";
   const profilePicSrc = user?.profileImage
     ? user.profileImage.startsWith("http")
       ? user.profileImage
@@ -220,25 +207,21 @@ export default function AIChatbotPage() {
     : undefined;
 
   useEffect(() => {
-    if (user?.fullName) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === "1"
-            ? {
-                ...m,
-                content: `Hello ${firstName}! How can I assist you with your health questions, finding doctors or hospitals, or booking care today?`,
-              }
-            : m
-        )
-      );
-    }
-  }, [user?.fullName, firstName]);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: `Hello ${firstName}! How can I assist you with your health questions, finding doctors or hospitals, booking appointments, or viewing your medical records today?`,
+        time: formatTime(),
+      },
+    ]);
+  }, [firstName]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
 
@@ -249,20 +232,80 @@ export default function AIChatbotPage() {
       time: formatTime(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setInput("");
+    setError("");
     setIsTyping(true);
 
-    // Simulated assistant response — replace with API call later
-    window.setTimeout(() => {
-      setMessages((prev) => [...prev, mockAssistantReply(trimmed)]);
+    setRecentChats((prev) => [
+      {
+        id: crypto.randomUUID(),
+        title: truncateTitle(trimmed),
+        time: "Just now",
+        icon: /pill|vitamin|dose|medicine/i.test(trimmed) ? "pill" : "chat",
+      },
+      ...prev.slice(0, 4),
+    ]);
+
+    try {
+      const history = nextMessages
+        .filter((m) => m.id !== "welcome")
+        .slice(0, -1)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const res = await api.post(
+        "/v1/users/chat",
+        {
+          message: trimmed,
+          history,
+        },
+        { timeout: 60000 }
+      );
+
+      const reply = String(res.data?.reply || "Sorry, I couldn't generate a response.");
+      const attachments = Array.isArray(res.data?.attachments) ? res.data.attachments : [];
+      const actions = Array.isArray(res.data?.actions) ? res.data.actions : [];
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: reply,
+          time: formatTime(),
+          attachments,
+          actions,
+        },
+      ]);
+    } catch (e: unknown) {
+      const err = e as {
+        code?: string;
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const msg =
+        err.code === "ECONNABORTED" || /timeout/i.test(err.message || "")
+          ? "The AI is taking too long. Please try again."
+          : err.response?.data?.message || err.message || "Failed to reach the AI assistant";
+      setError(msg);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Sorry — I couldn't process that right now. Please try again in a moment.",
+          time: formatTime(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    void sendMessage(input);
   };
 
   return (
@@ -270,10 +313,8 @@ export default function AIChatbotPage() {
       <DashboardTopBar placeholder="Search patient data, records, or help..." />
 
       <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 md:p-6 lg:flex-row lg:gap-5 lg:p-6">
-        {/* ── Chat column ── */}
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {/* Chat header */}
             <div className="border-b border-gray-100 px-5 py-4">
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#0052cc]">
@@ -288,7 +329,13 @@ export default function AIChatbotPage() {
               </div>
             </div>
 
-            {/* Messages */}
+            {error && (
+              <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">
+                <AlertCircle size={14} />
+                {error}
+              </div>
+            )}
+
             <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-5">
               {messages.map((msg) => (
                 <ChatBubble
@@ -314,23 +361,35 @@ export default function AIChatbotPage() {
               <div ref={chatEndRef} />
             </div>
 
-            {/* Quick actions + input */}
             <div className="border-t border-gray-100 bg-white px-4 py-4 sm:px-5">
               <div className="mb-3 flex flex-wrap gap-2">
                 {QUICK_ACTIONS.map(({ label, icon: Icon, prompt }) => (
                   <button
                     key={label}
                     type="button"
-                    onClick={() => {
-                      setInput(prompt);
-                      inputRef.current?.focus();
-                    }}
+                    onClick={() => void sendMessage(prompt)}
                     className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-[#0052cc]"
                   >
                     <Icon size={13} strokeWidth={2.2} />
                     {label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("Show my medical records and any uploaded files.")}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-[#0052cc]"
+                >
+                  <FileText size={13} strokeWidth={2.2} />
+                  My Records
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("Show my appointment bookings.")}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-[#0052cc]"
+                >
+                  <CalendarCheck size={13} strokeWidth={2.2} />
+                  My Appointments
+                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -371,7 +430,6 @@ export default function AIChatbotPage() {
             </div>
           </div>
 
-          {/* Emergency banner */}
           <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5 sm:flex-row sm:items-center sm:px-5">
             <div className="flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
@@ -391,9 +449,7 @@ export default function AIChatbotPage() {
           </div>
         </div>
 
-        {/* ── Right sidebar ── */}
         <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[280px]">
-          {/* Recent chats */}
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Recent Chats</h2>
@@ -402,10 +458,11 @@ export default function AIChatbotPage() {
               </button>
             </div>
             <ul className="space-y-1">
-              {RECENT_CHATS.map((chat) => (
+              {recentChats.map((chat) => (
                 <li key={chat.id}>
                   <button
                     type="button"
+                    onClick={() => void sendMessage(chat.title.replace(/\.\.\.$/, ""))}
                     className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-gray-50"
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
@@ -421,7 +478,6 @@ export default function AIChatbotPage() {
             </ul>
           </div>
 
-          {/* Tip of the day */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 p-5 text-white shadow-sm">
             <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" />
             <div className="absolute -bottom-6 -right-2 h-16 w-16 rounded-full bg-white/5" />
