@@ -3,15 +3,94 @@ import jwt from "jsonwebtoken";
 import fs from "fs/promises";
 import path from "path";
 import { OAuth2Client } from "google-auth-library";
+import crypto from "crypto";
 import { UserRepository } from "../repositories/user.repository";
 import { JWT_SECRET } from "../config/constant";
-// import { CLIENT_URL, SECRET_KEY } from "../config/constant";
-// import { sendEmail } from "../config/email";
+import { sendEmail } from "../config/email";
 
 const userRepository = new UserRepository();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export class UserService {
+  private readonly resetCodeLifetimeMs = 15 * 60 * 1000;
+  private readonly resetRequestWindowMs = 60 * 60 * 1000;
+  private readonly maxResetRequestsPerWindow = 3;
+  private readonly maxResetCodeAttempts = 5;
+
+  private clearResetCode(user: any) {
+    user.resetPasswordCodeHash = undefined;
+    user.resetPasswordCodeExpiresAt = undefined;
+    user.resetPasswordCodeAttempts = 0;
+  }
+
+  async requestPasswordReset(rawEmail: string) {
+    const email = rawEmail.trim().toLowerCase();
+    const user = await userRepository.findByEmailWithPasswordResetFields(email);
+
+    // Do not reveal whether an account exists or accepts password sign-in.
+    if (!user || !user.password) return;
+
+    const now = new Date();
+    const windowStarted = user.resetPasswordRequestWindowStartedAt;
+    if (!windowStarted || now.getTime() - windowStarted.getTime() >= this.resetRequestWindowMs) {
+      user.resetPasswordRequestWindowStartedAt = now;
+      user.resetPasswordRequestCount = 0;
+    }
+    if ((user.resetPasswordRequestCount || 0) >= this.maxResetRequestsPerWindow) return;
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    user.resetPasswordCodeHash = await bcrypt.hash(code, 10);
+    user.resetPasswordCodeExpiresAt = new Date(now.getTime() + this.resetCodeLifetimeMs);
+    user.resetPasswordCodeAttempts = 0;
+    user.resetPasswordRequestCount = (user.resetPasswordRequestCount || 0) + 1;
+    await user.save();
+
+    try {
+      await sendEmail(
+        user.email,
+        "Your MediConnect password reset code",
+        `<p>Use this verification code to reset your MediConnect password:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>This code expires in 15 minutes. If you did not request this, you can safely ignore this email.</p>`
+      );
+    } catch (error) {
+      this.clearResetCode(user);
+      await user.save();
+      throw error;
+    }
+  }
+
+  async verifyPasswordResetCode(rawEmail: string, code: string) {
+    const user = await this.getValidResetUser(rawEmail, code);
+    return { email: user.email };
+  }
+
+  async resetPassword(rawEmail: string, code: string, newPassword: string) {
+    if (newPassword.length < 8) throw new Error("New password must be at least 8 characters long");
+    const user = await this.getValidResetUser(rawEmail, code);
+    user.password = await bcrypt.hash(newPassword, 10);
+    this.clearResetCode(user);
+    await user.save();
+  }
+
+  private async getValidResetUser(rawEmail: string, code: string) {
+    const user = await userRepository.findByEmailWithPasswordResetFields(rawEmail.trim().toLowerCase());
+    if (!user || !user.password || !user.resetPasswordCodeHash || !user.resetPasswordCodeExpiresAt || user.resetPasswordCodeExpiresAt.getTime() < Date.now()) {
+      throw new Error("The verification code is invalid or has expired");
+    }
+    if ((user.resetPasswordCodeAttempts || 0) >= this.maxResetCodeAttempts) {
+      this.clearResetCode(user);
+      await user.save();
+      throw new Error("Too many incorrect codes. Please request a new code");
+    }
+    const valid = await bcrypt.compare(code, user.resetPasswordCodeHash);
+    if (!valid) {
+      user.resetPasswordCodeAttempts = (user.resetPasswordCodeAttempts || 0) + 1;
+      if (user.resetPasswordCodeAttempts >= this.maxResetCodeAttempts) this.clearResetCode(user);
+      await user.save();
+      throw new Error("The verification code is invalid or has expired");
+    }
+    return user;
+  }
+
   checkPassword(userId: string, currentPassword: any) {
       throw new Error("Method not implemented.");
   }

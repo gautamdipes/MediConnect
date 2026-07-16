@@ -5,6 +5,12 @@ export class UserRepository {
     return userModel.UserModel.findOne({ email });
   }
 
+  async findByEmailWithPasswordResetFields(email: string) {
+    return userModel.UserModel.findOne({ email })
+      .select("+resetPasswordCodeHash +resetPasswordCodeExpiresAt +resetPasswordCodeAttempts +resetPasswordRequestCount +resetPasswordRequestWindowStartedAt")
+      .exec();
+  }
+
   async findByGoogleId(googleId: string) {
     return userModel.UserModel.findOne({ googleId });
   }

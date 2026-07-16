@@ -12,4 +12,9 @@ export interface IUser {
   gender?: string;
   role?: "user" | "admin" | "hospital";
   hospitalId?: string;
+  resetPasswordCodeHash?: string;
+  resetPasswordCodeExpiresAt?: Date;
+  resetPasswordCodeAttempts?: number;
+  resetPasswordRequestCount?: number;
+  resetPasswordRequestWindowStartedAt?: Date;
 }

@@ -102,3 +102,33 @@ export const deleteProfileImage = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  if (!req.body?.email) return res.status(400).json({ message: "Email is required" });
+  try {
+    await userService.requestPasswordReset(req.body.email);
+    return res.status(200).json({ message: "If that email has an eligible account, a verification code has been sent." });
+  } catch (err: any) {
+    return res.status(503).json({ message: err.message || "Unable to send the verification code right now" });
+  }
+};
+
+export const verifyPasswordResetCode = async (req: Request, res: Response) => {
+  if (!req.body?.email || !req.body?.code) return res.status(400).json({ message: "Email and verification code are required" });
+  try {
+    await userService.verifyPasswordResetCode(req.body.email, String(req.body.code));
+    return res.status(200).json({ message: "Verification code confirmed" });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || "Invalid verification code" });
+  }
+};
+
+export const confirmPasswordReset = async (req: Request, res: Response) => {
+  if (!req.body?.email || !req.body?.code || !req.body?.newPassword) return res.status(400).json({ message: "Email, verification code, and new password are required" });
+  try {
+    await userService.resetPassword(req.body.email, String(req.body.code), req.body.newPassword);
+    return res.status(200).json({ message: "Password reset successfully. You can now sign in." });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || "Unable to reset password" });
+  }
+};

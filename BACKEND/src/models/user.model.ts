@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hospital",
     },
+    resetPasswordCodeHash: { type: String, select: false },
+    resetPasswordCodeExpiresAt: { type: Date, select: false },
+    resetPasswordCodeAttempts: { type: Number, default: 0, select: false },
+    resetPasswordRequestCount: { type: Number, default: 0, select: false },
+    resetPasswordRequestWindowStartedAt: { type: Date, select: false },
   },
   { timestamps: true }
 );
