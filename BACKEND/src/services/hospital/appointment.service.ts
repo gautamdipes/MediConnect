@@ -1,4 +1,5 @@
 import { AppointmentModel } from "../../models/appointment.model";
+import { HospitalNotificationService } from "./notification.service";
 
 const STATUSES = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "EMERGENCY"] as const;
 
@@ -16,6 +17,7 @@ function serialize(appointment: any) {
 }
 
 export class HospitalAppointmentService {
+  private notificationService = new HospitalNotificationService();
   async list(hospitalId: string, query: { status?: string; search?: string }) {
     const filter: any = { hospitalId };
     if (query.status && STATUSES.includes(query.status as any)) filter.status = query.status;
@@ -30,6 +32,7 @@ export class HospitalAppointmentService {
   async create(hospitalId: string, payload: { patientName?: string; doctorName?: string; department?: string; date?: string; time?: string; reason?: string }) {
     if (!payload.patientName?.trim() || !payload.doctorName?.trim() || !payload.time) throw { status: 400, message: "Patient, doctor, and time are required" };
     const appointment = await AppointmentModel.create({ hospitalId, patientName: payload.patientName.trim(), doctorName: payload.doctorName.trim(), date: payload.date ? new Date(payload.date) : new Date(), time: payload.time, reason: payload.reason?.trim() || payload.department?.trim() || "General Checkup", status: "PENDING" });
+    await this.notificationService.create(hospitalId, { title: "New appointment booked", detail: `${appointment.patientName} · ${appointment.time}`, type: "appointment" });
     return { appointment: serialize(appointment) };
   }
 
@@ -37,6 +40,9 @@ export class HospitalAppointmentService {
     if (!STATUSES.includes(status as any)) throw { status: 400, message: "Invalid appointment status" };
     const appointment = await AppointmentModel.findOneAndUpdate({ _id: id, hospitalId }, { status }, { new: true }).populate("patientId", "fullName").populate("doctorId", "fullName department");
     if (!appointment) throw { status: 404, message: "Appointment not found" };
+    if (status === "COMPLETED") {
+      await this.notificationService.create(hospitalId, { title: "Patient checked in", detail: `${(appointment.patientId as any)?.fullName || appointment.patientName || "Patient"} · ${appointment.time}`, type: "check-in" });
+    }
     return { appointment: serialize(appointment) };
   }
 }

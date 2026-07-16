@@ -23,6 +23,8 @@ import hospitalAuthRoutes     from "./routes/hospital/auth.route";
 import hospitalDashboardRoutes from "./routes/hospital/dashboard.route";
 import hospitalPatientRoutes   from "./routes/hospital/patient.route";
 import hospitalAppointmentRoutes from "./routes/hospital/appointment.route";
+import hospitalSettingsRoutes from "./routes/hospital/settings.route";
+import hospitalNotificationRoutes from "./routes/hospital/notification.route";
 
 const app = express();
 
@@ -60,6 +62,8 @@ app.use("/api/v1/hospital",           hospitalAuthRoutes);
 app.use("/api/v1/hospital/dashboard", hospitalDashboardRoutes);
 app.use("/api/v1/hospital/patients",  hospitalPatientRoutes);
 app.use("/api/v1/hospital/appointments", hospitalAppointmentRoutes);
+app.use("/api/v1/hospital/settings", hospitalSettingsRoutes);
+app.use("/api/v1/hospital/notifications", hospitalNotificationRoutes);
 
 app.use(errorHandler);
 

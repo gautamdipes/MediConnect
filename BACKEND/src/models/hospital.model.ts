@@ -13,6 +13,12 @@ export interface IHospital {
   rating?: number;
   emergency?: boolean;
   image?: string;
+  address?: string;
+  notificationPreferences: {
+    appointmentAlerts: boolean;
+    checkInAlerts: boolean;
+    recordAlerts: boolean;
+  };
 }
 
 export interface IHospitalDocument extends IHospital, Document {}
@@ -35,6 +41,12 @@ const hospitalSchema = new mongoose.Schema<IHospitalDocument>(
     rating: { type: Number, default: 0 },
     emergency: { type: Boolean, default: false },
     image: { type: String },
+    address: { type: String, default: "" },
+    notificationPreferences: {
+      appointmentAlerts: { type: Boolean, default: true },
+      checkInAlerts: { type: Boolean, default: true },
+      recordAlerts: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );

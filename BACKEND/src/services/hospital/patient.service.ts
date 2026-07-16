@@ -2,6 +2,7 @@ import { AppointmentModel } from "../../models/appointment.model";
 import { MedicalRecordModel } from "../../models/medical-record.model";
 import { UserModel } from "../../models/user.model";
 import { HospitalPatientModel } from "../../models/hospital-patient.model";
+import { HospitalNotificationService } from "./notification.service";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,6 +22,7 @@ function serializePatient(patient: any) {
 }
 
 export class HospitalPatientService {
+  private notificationService = new HospitalNotificationService();
   async listPatients(
     hospitalId: string,
     query: { page?: number; limit?: number; search?: string }
@@ -123,6 +125,7 @@ export class HospitalPatientService {
   async createPatient(hospitalId: string, payload: { fullName?: string; email?: string; phoneNumber?: string; age?: number; gender?: string; department?: string; notes?: string }) {
     if (!payload.fullName?.trim() || !payload.email?.trim() || !payload.phoneNumber?.trim()) throw { status: 400, message: "Name, email, and phone number are required" };
     const patient = await HospitalPatientModel.create({ hospitalId, fullName: payload.fullName.trim(), email: payload.email.trim(), phoneNumber: payload.phoneNumber.trim(), age: payload.age, gender: payload.gender, department: payload.department, notes: payload.notes });
+    await this.notificationService.create(hospitalId, { title: "Patient added", detail: `${patient.fullName} was added to the patient directory`, type: "record" });
     return { _id: patient._id, fullName: patient.fullName, email: patient.email, phoneNumber: patient.phoneNumber, age: patient.age || null, gender: patient.gender || null, department: patient.department, notes: patient.notes, appointmentCount: 0, latestAppointment: null };
   }
 
