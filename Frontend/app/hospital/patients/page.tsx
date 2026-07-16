@@ -5,7 +5,6 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Bell,
   CalendarDays,
   ChevronDown,
   CircleUserRound,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { createHospitalPatient, getHospitalPatients } from "@/lib/api/hospital";
+import { HospitalNotifications } from "../components/HospitalNotifications";
 
 type PatientStatus = "Active" | "In consultation" | "Follow-up";
 
@@ -104,10 +104,10 @@ function HospitalPatientsSidebar({ mobile, onClose, onLogout }: { mobile?: boole
       </nav>
 
       <div className="mt-auto border-t border-slate-100 pt-5">
-        <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">
+        <Link href="/hospital/settings" onClick={() => onClose?.()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">
           <Settings size={18} strokeWidth={2.2} />
           Settings
-        </button>
+        </Link>
         <button type="button" onClick={onLogout} className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
           <LogOut size={18} strokeWidth={2.2} />
           Log out
@@ -235,7 +235,7 @@ export default function HospitalPatientsPage() {
         <header className="sticky top-0 z-20 flex h-[72px] items-center border-b border-slate-100 bg-white/95 px-4 backdrop-blur md:px-7">
           <button type="button" onClick={() => setMobileMenuOpen(true)} className="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Open menu"><Menu size={21} /></button>
           <div className="hidden max-w-md flex-1 sm:block"><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search patients, appointments..." /></div></div>
-          <div className="ml-auto flex items-center gap-2.5"><button type="button" onClick={() => setNotice("You have 3 new hospital activity updates.")} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications"><Bell size={17} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" /></button><div className="hidden h-7 w-px bg-slate-200 sm:block" /><button type="button" onClick={() => setNotice("Signed in as City Hospital administrator.")} className="flex items-center gap-2 text-left"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div><div className="hidden sm:block"><p className="text-xs font-extrabold text-slate-800">City Hospital</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p></div><ChevronDown size={15} className="hidden text-slate-400 sm:block" /></button></div>
+          <div className="ml-auto flex items-center gap-2.5"><HospitalNotifications /><div className="hidden h-7 w-px bg-slate-200 sm:block" /><button type="button" onClick={() => setNotice("Signed in as City Hospital administrator.")} className="flex items-center gap-2 text-left"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div><div className="hidden sm:block"><p className="text-xs font-extrabold text-slate-800">City Hospital</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p></div><ChevronDown size={15} className="hidden text-slate-400 sm:block" /></button></div>
         </header>
 
         <main className="mx-auto max-w-[1440px] p-4 md:p-7">

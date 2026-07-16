@@ -6,7 +6,6 @@ import {
   Activity,
   ArrowUpRight,
   BedDouble,
-  Bell,
   CalendarDays,
   ChevronDown,
   ClipboardList,
@@ -22,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { HospitalNotifications } from "../components/HospitalNotifications";
 
 type Icon = ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
 
@@ -186,7 +186,9 @@ export default function HospitalDashboardPage() {
       router.push("/hospital/appointments");
       return;
     } else if (label === "Settings") {
-      setNotice(`${label} is not available in this portal yet.`);
+      router.push("/hospital/settings");
+      setMobileMenuOpen(false);
+      return;
     }
     setActiveItem(label);
     setMobileMenuOpen(false);
@@ -224,10 +226,7 @@ export default function HospitalDashboardPage() {
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2.5">
-            <button type="button" onClick={() => setNotice("You have 3 new hospital activity updates.")} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Notifications">
-              <Bell size={17} />
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
-            </button>
+            <HospitalNotifications />
             <div className="hidden h-7 w-px bg-slate-200 sm:block" />
             <button type="button" className="flex items-center gap-2 text-left">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div>
