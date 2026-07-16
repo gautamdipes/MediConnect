@@ -12,6 +12,7 @@ export type User = {
   phoneNumber?: string;
   profileImage?: string;
   dob?: string;
+  role?: "user" | "hospital" | "admin";
 };
 
 // Context shape
