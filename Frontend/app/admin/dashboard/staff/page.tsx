@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -344,11 +345,21 @@ export default function DoctorManagementPage() {
     if (!editDoc) return;
     setSaving(true); setError("");
     try {
-      const body = { ...form, experience: Number(form.experience), rating: Number(form.rating) };
+      const experience = Number(form.experience);
+      const rating = Number(form.rating);
+      if (!form.fullName.trim() || !form.email.trim() || !form.phone.trim() || !form.specialization.trim() || !form.department) {
+        throw new Error("Name, email, phone, specialization, and department are required.");
+      }
+      if (!Number.isFinite(experience) || experience < 0 || !Number.isFinite(rating) || rating < 0 || rating > 5) {
+        throw new Error("Experience must be 0 or greater and rating must be between 0 and 5.");
+      }
+      const body = { ...form, fullName: form.fullName.trim(), email: form.email.trim().toLowerCase(), phone: form.phone.trim(), specialization: form.specialization.trim(), department: form.department.trim(), hospitalName: form.hospitalName.trim(), experience, rating };
       const res  = await fetch(`${BASE}/${editDoc._id}`, { method: "PUT", headers, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      const { doctor } = await res.json();
+      setDoctors((current) => current.map((item) => item._id === doctor._id ? doctor : item));
       setEditDoc(null); setForm(EMPTY_FORM);
-      fetchDoctors(); fetchStats();
+      fetchStats();
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -369,8 +380,8 @@ export default function DoctorManagementPage() {
     setForm({
       fullName: doc.fullName, email: doc.email, phone: doc.phone,
       specialization: doc.specialization, department: doc.department,
-      hospitalName: doc.hospitalName ?? "", experience: String(doc.experience),
-      rating: String(doc.rating), status: doc.status, gender: doc.gender ?? "Male",
+      hospitalName: doc.hospitalName ?? "", experience: String(Number.isFinite(doc.experience) ? doc.experience : 0),
+      rating: String(Number.isFinite(doc.rating) ? doc.rating : 0), status: doc.status ?? "ACTIVE", gender: doc.gender ?? "Male",
     });
     setEditDoc(doc);
   };
@@ -516,9 +527,9 @@ export default function DoctorManagementPage() {
                     <td style={{ padding: "12px 14px" }}><StatusBadge status={doc.status} /></td>
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                        <button onClick={() => setViewDoc(doc)} title="View" style={{ border: "none", background: "none", cursor: "pointer", color: "#2563EB", fontSize: "15px" }}>👁</button>
-                        <button onClick={() => openEdit(doc)} title="Edit" style={{ border: "none", background: "none", cursor: "pointer", color: "#64748B", fontSize: "15px" }}>✏️</button>
-                        <button onClick={() => setDeleteDoc(doc)} title="Delete" style={{ border: "none", background: "none", cursor: "pointer", color: "#DC2626", fontSize: "15px" }}>🗑</button>
+                        <button onClick={() => setViewDoc(doc)} title="View doctor" aria-label={`View ${doc.fullName}`} style={{ border: "none", borderRadius: "6px", background: "none", cursor: "pointer", color: "#2563EB", padding: "5px", display: "inline-flex" }}><Eye size={16} strokeWidth={2.25} /></button>
+                        <button onClick={() => openEdit(doc)} title="Edit doctor" aria-label={`Edit ${doc.fullName}`} style={{ border: "none", borderRadius: "6px", background: "none", cursor: "pointer", color: "#475569", padding: "5px", display: "inline-flex" }}><Pencil size={16} strokeWidth={2.25} /></button>
+                        <button onClick={() => setDeleteDoc(doc)} title="Delete doctor" aria-label={`Delete ${doc.fullName}`} style={{ border: "none", borderRadius: "6px", background: "none", cursor: "pointer", color: "#DC2626", padding: "5px", display: "inline-flex" }}><Trash2 size={16} strokeWidth={2.25} /></button>
                       </div>
                     </td>
                   </tr>

@@ -6,6 +6,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 const axiosInstance = axios.create({
     baseURL: BASE_URL,
+    // A stalled API request must not leave interactive pages permanently locked.
+    timeout: 15000,
     headers: {
         "Content-Type": "application/json",
     },

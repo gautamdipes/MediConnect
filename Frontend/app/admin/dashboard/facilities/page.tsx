@@ -24,6 +24,8 @@ interface Hospital {
   emergency?: boolean;       // has an emergency center
   createdAt: string;
   image?: string;
+  email?: string;
+  phoneNumber?: string;
 }
 
 const PAGE_SIZE = 10;
@@ -286,6 +288,30 @@ function AddHospitalModal({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+function EditHospitalModal({ hospital, token, onClose, onSuccess }: { hospital: Hospital; token: string | null; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    hospitalName: hospital.hospitalName, type: hospital.type || "General Hospital", city: hospital.city, state: hospital.state,
+    email: hospital.email || "", phoneNumber: hospital.phoneNumber || "", departments: hospital.departments.join(", "),
+    doctorsCount: String(hospital.doctorsCount || 0), rating: String(hospital.rating ?? 0), emergency: Boolean(hospital.emergency),
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const set = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+  const fieldCls = "w-full h-10 px-3 border border-gray-200 rounded-xl text-sm outline-none transition-all font-medium focus:border-[#0057d9] bg-white";
+  const save = async () => {
+    if (!form.hospitalName.trim() || !form.city.trim() || !form.state.trim() || !form.email.trim() || !form.phoneNumber.trim()) { setError("Hospital name, location, email, and phone are required."); return; }
+    setSaving(true); setError("");
+    try {
+      const response = await fetch(`${BASE}/${hospital._id}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...form, departments: form.departments.split(",").map((department) => department.trim()).filter(Boolean), doctorsCount: Number(form.doctorsCount) || 0, rating: Number(form.rating) || 0 }) });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.message || "Failed to update hospital"); }
+      onSuccess(); onClose();
+    } catch (error: any) { setError(error.message || "Failed to update hospital"); } finally { setSaving(false); }
+  };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"><div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-gray-100 px-6 py-4"><h2 className="text-base font-bold text-slate-900">Edit Hospital</h2><button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"><X size={16} /></button></div><div className="max-h-[70vh] space-y-3 overflow-y-auto px-6 py-5">{error && <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-600"><AlertTriangle size={13} />{error}</div>}<Field label="Hospital Name *"><input className={fieldCls} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field><Field label="Facility Type"><input className={fieldCls} value={form.type} onChange={(e) => set("type", e.target.value)} /></Field><div className="grid grid-cols-2 gap-3"><Field label="City *"><input className={fieldCls} value={form.city} onChange={(e) => set("city", e.target.value)} /></Field><Field label="State *"><input className={fieldCls} value={form.state} onChange={(e) => set("state", e.target.value)} /></Field></div><Field label="Email *"><input className={fieldCls} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field><Field label="Phone *"><input className={fieldCls} value={form.phoneNumber} onChange={(e) => set("phoneNumber", e.target.value)} /></Field><Field label="Departments (comma separated)"><input className={fieldCls} value={form.departments} onChange={(e) => set("departments", e.target.value)} /></Field><div className="grid grid-cols-2 gap-3"><Field label="Doctors"><input className={fieldCls} type="number" min="0" value={form.doctorsCount} onChange={(e) => set("doctorsCount", e.target.value)} /></Field><Field label="Rating"><input className={fieldCls} type="number" min="0" max="5" step="0.1" value={form.rating} onChange={(e) => set("rating", e.target.value)} /></Field></div><label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input type="checkbox" checked={form.emergency} onChange={(e) => set("emergency", e.target.checked)} /> Emergency center</label></div><div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4"><button onClick={onClose} disabled={saving} className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-slate-600">Cancel</button><button onClick={save} disabled={saving} className="flex items-center gap-1.5 rounded-xl bg-[#0057d9] px-5 py-2 text-xs font-bold text-white disabled:opacity-50">{saving && <Loader2 size={12} className="animate-spin" />}Save changes</button></div></div></div>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div><label className="mb-1.5 block text-xs font-bold text-slate-600">{label}</label>{children}</div>; }
+
 export default function AdminHospitalsPage() {
   const [hospitals, setHospitals]   = useState<Hospital[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -295,6 +321,7 @@ export default function AdminHospitalsPage() {
   const [typeFilter, setType]       = useState("All");
   const [page, setPage]             = useState(1);
   const [viewHospital, setView]     = useState<Hospital | null>(null);
+  const [editHospital, setEdit]     = useState<Hospital | null>(null);
   const [showAdd, setShowAdd]       = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
@@ -629,6 +656,7 @@ export default function AdminHospitalsPage() {
                     <Eye size={15} strokeWidth={2.5} />
                   </button>
                   <button
+                    onClick={() => setEdit(hospital)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-[#0057d9] hover:bg-blue-50 transition-colors"
                     title="Edit"
                   >
@@ -699,6 +727,7 @@ export default function AdminHospitalsPage() {
 
       {/* Modals */}
       {viewHospital && <ViewModal hospital={viewHospital} onClose={() => setView(null)} />}
+      {editHospital && <EditHospitalModal hospital={editHospital} token={token} onClose={() => setEdit(null)} onSuccess={fetchHospitals} />}
       {showAdd && <AddHospitalModal token={token} onClose={() => setShowAdd(false)} onSuccess={fetchHospitals} />}
     </div>
   );
