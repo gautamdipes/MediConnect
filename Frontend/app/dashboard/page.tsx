@@ -139,6 +139,7 @@ function BookModal({
     e.preventDefault();
     if (!form.date || !form.time) return setError("Date and time are required");
     if (!form.doctorId) return setError("Please select a doctor");
+    if (!form.hospitalId) return setError("Please select a hospital");
     setLoading(true);
     setError("");
     try {
@@ -206,10 +207,11 @@ function BookModal({
 
           {/* Hospital select */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Hospital (optional)</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Hospital</label>
             <div className="relative">
               <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
+                required
                 value={form.hospitalId}
                 onChange={(e) => setForm({ ...form, hospitalId: e.target.value })}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"

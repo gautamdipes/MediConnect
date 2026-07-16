@@ -72,6 +72,7 @@ function BookModal({
     e.preventDefault();
     if (!form.date || !form.time) return setError("Date and time are required");
     if (!form.doctorId) return setError("Please select a doctor");
+    if (!form.hospitalId) return setError("Please select a hospital");
     setLoading(true);
     setError("");
     try {
@@ -118,6 +119,7 @@ function BookModal({
           <label className="text-sm font-semibold text-gray-700">
             Hospital
             <select
+              required
               value={form.hospitalId}
               onChange={(e) => setForm({ ...form, hospitalId: e.target.value })}
               className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:border-blue-500 focus:bg-white"
