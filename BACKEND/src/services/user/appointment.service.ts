@@ -1,8 +1,11 @@
 import { AppointmentModel } from "../../models/appointment.model";
 import { DoctorModel } from "../../models/doctor.model";
 import { MedicalRecordModel } from "../../models/medical-record.model";
+import { HospitalNotificationService } from "../hospital/notification.service";
 
 export class UserAppointmentService {
+  private notificationService = new HospitalNotificationService();
+
   /** List all appointments for a patient */
   async listAppointments(userId: string, query: { status?: string; page?: number; limit?: number }) {
     const page = query.page || 1;
@@ -30,10 +33,34 @@ export class UserAppointmentService {
       throw { status: 400, message: "doctorId is required" };
     }
 
-    const payload: Record<string, unknown> = { ...rest, patientId: userId, doctorId };
-    if (hospitalId) payload.hospitalId = hospitalId;
+    const doctor = await DoctorModel.findById(doctorId).select("hospitalId hospitalName");
+    if (!doctor) {
+      throw { status: 404, message: "Doctor not found" };
+    }
+
+    const doctorHospitalId = doctor.hospitalId?.toString();
+    // Store every user booking against the selected hospital (or the doctor's
+    // hospital when a selection is unavailable). Hospital portal queries are
+    // scoped by this field, so a Bir Hospital booking is visible only to Bir.
+    const appointmentHospitalId = hospitalId || doctorHospitalId;
+    if (!appointmentHospitalId) {
+      throw { status: 400, message: "Please select a hospital for this appointment" };
+    }
+
+    const payload: Record<string, unknown> = {
+      ...rest,
+      patientId: userId,
+      doctorId,
+      hospitalId: appointmentHospitalId,
+      hospitalName: data.hospitalName || doctor.hospitalName,
+    };
 
     const appointment = await AppointmentModel.create(payload);
+    await this.notificationService.create(String(appointmentHospitalId), {
+      title: "New appointment booked",
+      detail: `${data.patientName || "A patient"} · ${appointment.time}`,
+      type: "appointment",
+    });
     return appointment;
   }
 

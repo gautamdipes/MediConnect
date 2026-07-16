@@ -19,22 +19,22 @@ type Account = {
 const credentials = {
   admin: {
     fullName: "MediConnect Administrator",
-    email: "admin@mediconnect.local",
-    password: "AdminPortal#2026",
+    email: "admin123@gmail.com",
+    password: "admin123",
     phoneNumber: "9800000001",
     role: "admin" as const,
   },
   hospital: {
     fullName: "Demo City Hospital Admin",
-    email: "hospital@mediconnect.local",
-    password: "HospitalPortal#2026",
+    email: "bir123@gmail.com",
+    password: "bir123@",
     phoneNumber: "9800000000",
     role: "hospital" as const,
   },
   patient: {
     fullName: "Demo Patient",
-    email: "patient@mediconnect.local",
-    password: "PatientPortal#2026",
+    email: "gau1@gmail.com",
+    password: "gautam111",
     phoneNumber: "9800000002",
     role: "user" as const,
   },

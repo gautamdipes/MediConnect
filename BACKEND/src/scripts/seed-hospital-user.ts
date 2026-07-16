@@ -9,8 +9,8 @@ import { connectDB } from "../database/mongodb";
 import { HospitalModel } from "../models/hospital.model";
 import { UserModel } from "../models/user.model";
 
-const DEMO_EMAIL = "hospital@mediconnect.local";
-const DEMO_PASSWORD = "hospital123";
+const DEMO_EMAIL = "bir123@gmail.com";
+const DEMO_PASSWORD = "bir123@";
 
 async function seed() {
   await connectDB();
@@ -31,8 +31,13 @@ async function seed() {
     console.log("Using hospital:", hospital.hospitalName, hospital._id);
   }
 
-  const existing = await UserModel.findOne({ email: DEMO_EMAIL });
+  // Reuse the account already assigned to this hospital, so changing the demo
+  // credentials does not leave an older hospital login active.
+  const existing =
+    (await UserModel.findOne({ email: DEMO_EMAIL })) ||
+    (await UserModel.findOne({ role: "hospital", hospitalId: hospital._id } as any));
   if (existing) {
+    existing.email = DEMO_EMAIL;
     existing.role = "hospital";
     existing.hospitalId = hospital._id as any;
     existing.password = await bcrypt.hash(DEMO_PASSWORD, 10);
