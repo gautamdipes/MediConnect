@@ -208,7 +208,7 @@ export default function LoginForm({ staffOnly = false }: { staffOnly?: boolean }
             <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-[#0057d9]" />
             <span>Remember me on this device</span>
           </label>
-          <Link href="#" className="text-[#0057d9] hover:underline">
+          <Link href={`/forgot-password?portal=${portalMode}`} className="text-[#0057d9] hover:underline">
             Forgot password?
           </Link>
         </div>
