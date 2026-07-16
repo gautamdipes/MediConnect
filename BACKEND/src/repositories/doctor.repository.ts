@@ -26,7 +26,7 @@ export class DoctorRepository {
   }
 
   async update(id: string, data: any) {
-    return DoctorModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return DoctorModel.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true }).exec();
   }
 
   async delete(id: string) {

@@ -78,6 +78,16 @@ export class AdminDoctorService {
   async updateDoctor(id: string, data: UpdateDoctorDTO) {
     const doctor = await repo.findById(id);
     if (!doctor) throw new HttpException("Doctor not found", 404);
+    if (data.email && data.email !== doctor.email) {
+      const existing = await repo.findByEmail(data.email);
+      if (existing) throw new HttpException("Doctor with this email already exists", 400);
+    }
+    if (data.rating !== undefined && (!Number.isFinite(data.rating) || data.rating < 0 || data.rating > 5)) {
+      throw new HttpException("Rating must be between 0 and 5", 400);
+    }
+    if (data.experience !== undefined && (!Number.isFinite(data.experience) || data.experience < 0)) {
+      throw new HttpException("Experience must be 0 or greater", 400);
+    }
     return repo.update(id, data);
   }
 
