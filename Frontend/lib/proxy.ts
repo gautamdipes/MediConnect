@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { showToast } from "@/components/ToastProvider";
 
 export const api: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -14,6 +15,20 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toLowerCase();
+    if (["post", "put", "patch", "delete"].includes(method || "")) {
+      showToast(response.data?.message || (method === "delete" ? "Deleted successfully." : method === "post" ? "Created successfully." : "Changes saved successfully."), "success");
+    }
+    return response;
+  },
+  (error) => {
+    if (error.config?.method?.toLowerCase() !== "get") showToast(error.response?.data?.message || error.message || "Something went wrong.", "error");
+    return Promise.reject(error);
+  }
+);
 
 export const setAuthToken = (token: string | null) => {
   if (token) {

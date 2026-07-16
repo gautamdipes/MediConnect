@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthContextProvider } from "@/app/dashboard/context/AuthContext";
+import { ToastProvider } from "@/components/ToastProvider";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="font-[family-name:var(--font-sans)] antialiased">
         <AuthContextProvider>
           {children}
+          <ToastProvider />
         </AuthContextProvider>
       </body>
     </html>
