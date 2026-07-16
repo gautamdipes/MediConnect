@@ -25,10 +25,8 @@ import {
   User,
   Phone,
   Mail,
-  Bot,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
-import { AdminAIChatWidget } from "./components/AdminAIChatWidget";
 
 function adminAvatarUrl(imagePath?: string) {
   if (!imagePath) return "";
@@ -597,7 +595,6 @@ export default function AdminLayout({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [adminUser, setAdminUser] = useState<any>(null);
-  const [aiOpen, setAiOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
 
   // Always use light theme to match the user portal
@@ -747,21 +744,6 @@ export default function AdminLayout({
               SYNC LIVE
             </div>
             <button
-              type="button"
-              onClick={() => setAiOpen(true)}
-              className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
-                aiOpen
-                  ? "border-blue-100 bg-blue-50 text-[#0052cc]"
-                  : "border-gray-200 bg-white text-gray-600 hover:bg-blue-50 hover:text-[#0052cc]"
-              }`}
-              title="Admin AI Assistant"
-            >
-              <Bot size={17} />
-              <span className="absolute -right-0.5 -top-0.5 rounded bg-teal-400 px-1 text-[8px] font-black text-teal-950">
-                AI
-              </span>
-            </button>
-            <button
               ref={bellRef}
               onClick={() => setShowNotifications(!showNotifications)}
               className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
@@ -772,12 +754,6 @@ export default function AdminLayout({
             >
               <Bell size={17} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white" />
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              <Settings size={17} />
             </button>
             <div
               onClick={() => setShowProfileModal(true)}
@@ -809,11 +785,6 @@ export default function AdminLayout({
         </main>
       </div>
 
-      <AdminAIChatWidget
-        adminName={adminUser?.fullName}
-        open={aiOpen}
-        onOpenChange={setAiOpen}
-      />
     </div>
   );
 }
