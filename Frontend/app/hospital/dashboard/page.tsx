@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Activity,
   ArrowUpRight,
@@ -228,14 +229,14 @@ export default function HospitalDashboardPage() {
           <div className="ml-auto flex items-center gap-2.5">
             <HospitalNotifications />
             <div className="hidden h-7 w-px bg-slate-200 sm:block" />
-            <button type="button" className="flex items-center gap-2 text-left">
+            <Link href="/hospital/profile" className="flex items-center gap-2 text-left">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div>
               <div className="hidden sm:block">
                 <p className="text-xs font-extrabold text-slate-800">City Hospital</p>
                 <p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p>
               </div>
               <ChevronDown size={15} className="hidden text-slate-400 sm:block" />
-            </button>
+            </Link>
           </div>
         </header>
 
