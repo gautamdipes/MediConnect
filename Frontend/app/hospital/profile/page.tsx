@@ -7,7 +7,7 @@ import { HospitalNotifications } from "../components/HospitalNotifications";
 import { getHospitalSettings } from "@/lib/api/hospital";
 
 type HospitalProfile = { hospitalName: string; email: string; phone: string; address: string };
-const initialProfile: HospitalProfile = { hospitalName: "City Hospital", email: "admin@cityhospital.com", phone: "", address: "" };
+const initialProfile: HospitalProfile = { hospitalName: "", email: "", phone: "", address: "" };
 
 export default function HospitalProfilePage() {
   const [profile, setProfile] = useState(initialProfile);

@@ -1,344 +1,54 @@
 "use client";
 
-import { useMemo, useState, type ComponentType } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Activity,
-  ArrowUpRight,
-  BedDouble,
-  CalendarDays,
-  ChevronDown,
-  ClipboardList,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  MoreHorizontal,
-  Search,
-  Settings,
-  Stethoscope,
-  Users,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Activity, CalendarDays, ChevronDown, ClipboardList, FileText, LayoutDashboard, LogOut, Menu, Settings, Stethoscope, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { getHospitalDashboard } from "@/lib/api/hospital";
 import { HospitalNotifications } from "../components/HospitalNotifications";
 
-type Icon = ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
-
-type NavigationItem = {
-  label: string;
-  icon: Icon;
+type Dashboard = {
+  hospital: { hospitalName: string };
+  stats: { todayAppointments: number; patientsScheduledToday: number; availableDoctors: number; totalDoctors: number; totalPatients: number; availableBeds: number | null };
+  appointments: { today: Appointment[] };
+  doctors: { departments: { department: string; totalDoctors: number; availableDoctors: number }[] };
+  recentActivity: { type: string; occurredAt: string; appointment: Appointment }[];
 };
+type Appointment = { _id: string; patient: { fullName: string }; doctor: { fullName: string; specialization: string | null }; date: string; time: string; reason: string | null; status: string };
 
-const primaryNavigation: NavigationItem[] = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Patients", icon: Users },
-  { label: "Appointments", icon: CalendarDays },
+const navigation = [
+  { label: "Dashboard", href: "/hospital/dashboard", icon: LayoutDashboard },
+  { label: "Patients", href: "/hospital/patients", icon: Users },
+  { label: "Appointments", href: "/hospital/appointments", icon: CalendarDays },
 ];
 
-const secondaryNavigation: NavigationItem[] = [
-  { label: "Settings", icon: Settings },
-];
-
-const appointments = [
-  { patient: "Aarav Sharma", initials: "AS", doctor: "Dr. Meera Shah", time: "09:30 AM", type: "Cardiology", status: "Confirmed" },
-  { patient: "Sofia Rai", initials: "SR", doctor: "Dr. Rohan Gupta", time: "10:15 AM", type: "General Care", status: "Pending" },
-  { patient: "Ritesh Thapa", initials: "RT", doctor: "Dr. Anika Patel", time: "11:00 AM", type: "Neurology", status: "Confirmed" },
-  { patient: "Maya Joshi", initials: "MJ", doctor: "Dr. Meera Shah", time: "11:45 AM", type: "Cardiology", status: "Checked in" },
-];
-
-const activities = [
-  { title: "New appointment booked", detail: "Aarav Sharma • 09:30 AM", time: "10 min ago", icon: CalendarDays, tone: "bg-blue-50 text-[#0057d9]" },
-  { title: "Patient checked in", detail: "Maya Joshi • Cardiology", time: "32 min ago", icon: ClipboardList, tone: "bg-emerald-50 text-emerald-600" },
-  { title: "Medical record updated", detail: "Sofia Rai • Lab results", time: "1 hr ago", icon: FileText, tone: "bg-violet-50 text-violet-600" },
-];
-
-function NavigationButton({
-  item,
-  active,
-  onClick,
-}: {
-  item: NavigationItem;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const Icon = item.icon;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold transition-colors ${
-        active
-          ? "bg-[#0057d9] text-white shadow-sm"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-      }`}
-    >
-      <Icon size={18} strokeWidth={2.2} />
-      {item.label}
-    </button>
-  );
-}
-
-function HospitalSidebar({
-  activeItem,
-  onSelect,
-  onLogout,
-  mobile,
-  onClose,
-}: {
-  activeItem: string;
-  onSelect: (label: string) => void;
-  onLogout: () => void;
-  mobile?: boolean;
-  onClose?: () => void;
-}) {
-  return (
-    <aside className={`flex h-full w-[272px] flex-col border-r border-slate-100 bg-white px-4 py-5 ${mobile ? "shadow-2xl" : ""}`}>
-      <div className="flex items-center justify-between px-2">
-        <BrandLogo
-          size={35}
-          showText
-          subtitle="Hospital Portal"
-          textClassName="text-[18px] font-black tracking-tight text-[#0057d9] leading-none"
-          subtitleClassName="mt-1 text-[10px] font-bold tracking-wide text-slate-400"
-        />
-        {mobile && (
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close menu">
-            <X size={18} />
-          </button>
-        )}
-      </div>
-
-      <nav className="mt-9 space-y-1" aria-label="Hospital navigation">
-        <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Workspace</p>
-        {primaryNavigation.map((item) => (
-          <NavigationButton key={item.label} item={item} active={activeItem === item.label} onClick={() => onSelect(item.label)} />
-        ))}
-      </nav>
-
-      <nav className="mt-auto space-y-1 border-t border-slate-100 pt-5" aria-label="Hospital settings">
-        {secondaryNavigation.map((item) => (
-          <NavigationButton key={item.label} item={item} active={activeItem === item.label} onClick={() => onSelect(item.label)} />
-        ))}
-      </nav>
-
-      <button type="button" onClick={onLogout} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">
-        <LogOut size={18} strokeWidth={2.2} />
-        Log out
-      </button>
-    </aside>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  helper,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  icon: Icon;
-  tone: string;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
-          <Icon size={21} strokeWidth={2.2} />
-        </div>
-        <button type="button" className="rounded-lg p-1 text-slate-300 hover:bg-slate-50 hover:text-slate-500" aria-label={`More ${label} options`}>
-          <MoreHorizontal size={18} />
-        </button>
-      </div>
-      <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-slate-400">{label}</p>
-      <p className="mt-0.5 text-3xl font-extrabold tracking-tight text-slate-900">{value}</p>
-      <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-600">
-        <ArrowUpRight size={14} strokeWidth={2.5} />
-        {helper}
-      </p>
-    </section>
-  );
-}
+const labelForStatus = (status: string) => status === "COMPLETED" ? "Checked in" : status.charAt(0) + status.slice(1).toLowerCase();
+const statusClass = (status: string) => status === "CONFIRMED" ? "bg-emerald-50 text-emerald-600" : status === "COMPLETED" ? "bg-blue-50 text-[#0057d9]" : status === "CANCELLED" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600";
+const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export default function HospitalDashboardPage() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("Dashboard");
   const [search, setSearch] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const visibleAppointments = useMemo(() => {
+  useEffect(() => { getHospitalDashboard().then(setDashboard).catch((err) => setError(err.response?.data?.message || "Unable to load dashboard.")); }, []);
+  const appointments = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return appointments;
-    return appointments.filter((appointment) => [appointment.patient, appointment.doctor, appointment.type, appointment.status, appointment.time].some((value) => value.toLowerCase().includes(term)));
-  }, [search]);
-
-  const selectNavigation = (label: string) => {
-    if (label === "Patients") {
-      router.push("/hospital/patients");
-      return;
-    }
-    if (label === "Appointments") {
-      router.push("/hospital/appointments");
-      return;
-    } else if (label === "Settings") {
-      router.push("/hospital/settings");
-      setMobileMenuOpen(false);
-      return;
-    }
-    setActiveItem(label);
-    setMobileMenuOpen(false);
-  };
-
-  const logOut = () => {
-    localStorage.removeItem("hospitalToken");
-    router.push("/login");
-  };
-
-  return (
-    <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
-      <div className="hidden fixed inset-y-0 left-0 z-30 lg:block">
-        <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} onLogout={logOut} />
-      </div>
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} />
-          <div className="relative h-full w-[272px]">
-            <HospitalSidebar activeItem={activeItem} onSelect={selectNavigation} onLogout={logOut} mobile onClose={() => setMobileMenuOpen(false)} />
-          </div>
-        </div>
-      )}
-
-      <div className="lg:pl-[272px]">
-        <header className="sticky top-0 z-20 flex h-[72px] items-center border-b border-slate-100 bg-white/95 px-4 backdrop-blur md:px-7">
-          <button type="button" className="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Open menu" onClick={() => setMobileMenuOpen(true)}>
-            <Menu size={21} />
-          </button>
-          <div className="hidden max-w-md flex-1 sm:block">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white" placeholder="Search today’s appointments..." />
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-2.5">
-            <HospitalNotifications />
-            <div className="hidden h-7 w-px bg-slate-200 sm:block" />
-            <Link href="/hospital/profile" className="flex items-center gap-2 text-left">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">CH</div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-extrabold text-slate-800">City Hospital</p>
-                <p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p>
-              </div>
-              <ChevronDown size={15} className="hidden text-slate-400 sm:block" />
-            </Link>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-[1440px] p-4 md:p-7">
-          <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <p className="text-xs font-bold text-[#0057d9]">Tuesday, June 16</p>
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 md:text-[28px]">Good morning, City Hospital</h1>
-              <p className="mt-1 text-sm font-medium text-slate-500">Here&apos;s what&apos;s happening across your hospital today.</p>
-            </div>
-            <button type="button" onClick={() => { document.getElementById("todays-appointments")?.scrollIntoView({ behavior: "smooth", block: "start" }); setNotice("Calendar view focused on today’s appointments."); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-              <CalendarDays size={16} />
-              View calendar
-            </button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Today&apos;s appointments" value="42" helper="8.2% from last week" icon={CalendarDays} tone="bg-blue-50 text-[#0057d9]" />
-            <StatCard label="Patients checked in" value="18" helper="6 more than yesterday" icon={Users} tone="bg-emerald-50 text-emerald-600" />
-            <StatCard label="Available beds" value="24" helper="Across 6 departments" icon={BedDouble} tone="bg-violet-50 text-violet-600" />
-            <StatCard label="Active doctors" value="31" helper="All departments covered" icon={Stethoscope} tone="bg-amber-50 text-amber-600" />
-          </div>
-
-          <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <section id="todays-appointments" className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm xl:col-span-2">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-6">
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-900">Today&apos;s appointments</h2>
-                  <p className="mt-0.5 text-xs font-medium text-slate-400">Tuesday, June 16 • 42 scheduled</p>
-                </div>
-                <button type="button" onClick={() => router.push("/hospital/patients")} className="text-xs font-extrabold text-[#0057d9] hover:text-blue-700">View patients</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-[680px] w-full text-left">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">
-                      <th className="px-6 py-3 font-inherit">Patient</th>
-                      <th className="px-4 py-3 font-inherit">Doctor</th>
-                      <th className="px-4 py-3 font-inherit">Time</th>
-                      <th className="px-4 py-3 font-inherit">Status</th>
-                      <th className="px-5 py-3" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {visibleAppointments.map((appointment) => (
-                      <tr key={appointment.patient} className="transition hover:bg-slate-50/70">
-                        <td className="px-6 py-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[11px] font-extrabold text-[#0057d9]">{appointment.initials}</div>
-                            <div>
-                              <p className="text-[13px] font-bold text-slate-800">{appointment.patient}</p>
-                              <p className="text-[11px] font-medium text-slate-400">{appointment.type}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-[12px] font-semibold text-slate-600">{appointment.doctor}</td>
-                        <td className="px-4 py-3.5 text-[12px] font-bold text-slate-700">{appointment.time}</td>
-                        <td className="px-4 py-3.5">
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${appointment.status === "Confirmed" ? "bg-emerald-50 text-emerald-600" : appointment.status === "Checked in" ? "bg-blue-50 text-[#0057d9]" : "bg-amber-50 text-amber-600"}`}>{appointment.status}</span>
-                        </td>
-                        <td className="px-5 py-3.5"><button type="button" onClick={() => setNotice(`${appointment.patient}: ${appointment.status} at ${appointment.time} with ${appointment.doctor}.`)} className="rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600" aria-label={`More options for ${appointment.patient}`}><MoreHorizontal size={17} /></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {visibleAppointments.length === 0 && <p className="px-6 py-10 text-center text-sm font-semibold text-slate-400">No appointments match your search.</p>}
-              </div>
-            </section>
-
-            <div className="space-y-6">
-              <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-base font-extrabold text-slate-900">Department capacity</h2>
-                    <p className="mt-0.5 text-xs font-medium text-slate-400">Current bed occupancy</p>
-                  </div>
-                  <Activity size={19} className="text-[#0057d9]" />
-                </div>
-                <div className="mt-5 space-y-4">
-                  {[{ name: "Emergency", value: 82, color: "bg-rose-500" }, { name: "Cardiology", value: 65, color: "bg-[#0057d9]" }, { name: "General ward", value: 48, color: "bg-emerald-500" }].map((department) => (
-                    <div key={department.name}>
-                      <div className="mb-1.5 flex items-center justify-between text-xs font-bold"><span className="text-slate-600">{department.name}</span><span className="text-slate-400">{department.value}%</span></div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${department.color}`} style={{ width: `${department.value}%` }} /></div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between"><h2 className="text-base font-extrabold text-slate-900">Recent activity</h2><button type="button" onClick={() => setNotice("All recent activity is displayed below.")} className="text-xs font-extrabold text-[#0057d9]">See all</button></div>
-                <div className="mt-4 space-y-4">
-                  {activities.map((activity) => {
-                    const Icon = activity.icon;
-                    return <div key={activity.title} className="flex gap-3"><div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${activity.tone}`}><Icon size={15} /></div><div className="min-w-0 flex-1"><p className="text-xs font-bold text-slate-700">{activity.title}</p><p className="mt-0.5 truncate text-[11px] font-medium text-slate-400">{activity.detail}</p></div><span className="whitespace-nowrap text-[10px] font-medium text-slate-400">{activity.time}</span></div>;
-                  })}
-                </div>
-              </section>
-            </div>
-          </div>
-        </main>
-      </div>
-      {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl"><span>{notice}</span><button onClick={() => setNotice(null)} className="text-slate-300 hover:text-white" aria-label="Dismiss notification"><X size={16} /></button></div>}
-    </div>
-  );
+    const items = dashboard?.appointments.today || [];
+    return !term ? items : items.filter((a) => [a.patient.fullName, a.doctor.fullName, a.doctor.specialization || a.reason || "", a.time, a.status].some((value) => value.toLowerCase().includes(term)));
+  }, [dashboard, search]);
+  const hospitalName = dashboard?.hospital.hospitalName || "";
+  const todayLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
+  const logout = () => { localStorage.removeItem("hospitalToken"); router.push("/login"); };
+  const sidebar = (mobile = false) => <aside className={`flex h-full w-[272px] flex-col border-r border-slate-100 bg-white px-4 py-5 ${mobile ? "shadow-2xl" : ""}`}><div className="flex items-center justify-between px-2"><BrandLogo size={35} showText subtitle="Hospital Portal" textClassName="text-[18px] font-black tracking-tight text-[#0057d9] leading-none" subtitleClassName="mt-1 text-[10px] font-bold tracking-wide text-slate-400" />{mobile && <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 text-slate-400" aria-label="Close menu"><X size={18} /></button>}</div><nav className="mt-9 space-y-1"><p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Workspace</p>{navigation.map(({ label, href, icon: Icon }) => <Link key={label} href={href} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold ${label === "Dashboard" ? "bg-[#0057d9] text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}><Icon size={18} />{label}</Link>)}</nav><div className="mt-auto border-t border-slate-100 pt-5"><Link href="/hospital/settings" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500"><Settings size={18} />Settings</Link><button onClick={logout} className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-500 hover:bg-rose-50 hover:text-rose-600"><LogOut size={18} />Log out</button></div></aside>;
+  const stats = [
+    { label: "Today's appointments", value: dashboard?.stats.todayAppointments, icon: CalendarDays, tone: "bg-blue-50 text-[#0057d9]" },
+    { label: "Patients scheduled today", value: dashboard?.stats.patientsScheduledToday, icon: Users, tone: "bg-emerald-50 text-emerald-600" },
+    { label: "Active doctors", value: dashboard ? `${dashboard.stats.availableDoctors}/${dashboard.stats.totalDoctors}` : undefined, icon: Stethoscope, tone: "bg-amber-50 text-amber-600" },
+    { label: "Total patients", value: dashboard?.stats.totalPatients, icon: ClipboardList, tone: "bg-violet-50 text-violet-600" },
+  ];
+  return <div className="min-h-screen bg-[#f6f8fc] text-slate-900"><div className="fixed inset-y-0 left-0 z-30 hidden lg:block">{sidebar()}</div>{mobileMenuOpen && <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-slate-950/35" aria-label="Close menu" /><div className="relative h-full w-[272px]">{sidebar(true)}</div></div>}<div className="lg:pl-[272px]"><header className="sticky top-0 z-20 flex h-[72px] items-center border-b border-slate-100 bg-white/95 px-4 backdrop-blur md:px-7"><button onClick={() => setMobileMenuOpen(true)} className="mr-3 rounded-lg p-2 text-slate-500 lg:hidden" aria-label="Open menu"><Menu size={21} /></button><div className="hidden max-w-md flex-1 sm:block"><div className="relative"><Activity size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search today's appointments..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-[13px] font-medium outline-none focus:border-blue-400 focus:bg-white" /></div></div><div className="ml-auto flex items-center gap-2.5"><HospitalNotifications /><div className="hidden h-7 w-px bg-slate-200 sm:block" /><Link href="/hospital/profile" className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-extrabold text-[#0057d9]">{initials(hospitalName)}</div><div className="hidden sm:block"><p className="text-xs font-extrabold">{hospitalName || "Loading…"}</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">Hospital Admin</p></div><ChevronDown size={15} className="hidden text-slate-400 sm:block" /></Link></div></header><main className="mx-auto max-w-[1440px] p-4 md:p-7"><div className="mb-7"><p className="text-xs font-bold text-[#0057d9]">{todayLabel}</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-[28px]">{hospitalName ? `Good morning, ${hospitalName}` : "Hospital dashboard"}</h1><p className="mt-1 text-sm font-medium text-slate-500">Live operational data for your hospital.</p></div>{error && <p role="alert" className="mb-5 rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</p>}<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(({ label, value, icon: Icon, tone }) => <section key={label} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}><Icon size={21} /></div><p className="mt-5 text-[11px] font-extrabold uppercase tracking-[.1em] text-slate-400">{label}</p><p className="mt-0.5 text-3xl font-extrabold">{value ?? "—"}</p></section>)}</div><div className="mt-6 grid gap-6 xl:grid-cols-3"><section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm xl:col-span-2"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="text-base font-extrabold">Today's appointments</h2><p className="mt-0.5 text-xs font-medium text-slate-400">{dashboard ? `${dashboard.stats.todayAppointments} scheduled` : "Loading…"}</p></div><Link href="/hospital/appointments" className="text-xs font-extrabold text-[#0057d9]">View all</Link></div><div className="overflow-x-auto"><table className="min-w-[680px] w-full text-left"><thead><tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-extrabold uppercase tracking-[.1em] text-slate-400"><th className="px-6 py-3">Patient</th><th className="px-4 py-3">Doctor</th><th className="px-4 py-3">Time</th><th className="px-4 py-3">Status</th></tr></thead><tbody className="divide-y divide-slate-50">{appointments.map((a) => <tr key={a._id}><td className="px-6 py-3.5"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[11px] font-extrabold text-[#0057d9]">{initials(a.patient.fullName)}</div><div><p className="text-[13px] font-bold">{a.patient.fullName}</p><p className="text-[11px] text-slate-400">{a.doctor.specialization || a.reason || "—"}</p></div></div></td><td className="px-4 py-3.5 text-[12px] font-semibold text-slate-600">{a.doctor.fullName}</td><td className="px-4 py-3.5 text-[12px] font-bold">{a.time}</td><td className="px-4 py-3.5"><span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${statusClass(a.status)}`}>{labelForStatus(a.status)}</span></td></tr>)}</tbody></table>{dashboard && appointments.length === 0 && <p className="px-6 py-10 text-center text-sm font-semibold text-slate-400">No appointments found for today.</p>}</div></section><div className="space-y-6"><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Activity size={19} className="text-[#0057d9]" /><div><h2 className="text-base font-extrabold">Department staffing</h2><p className="mt-0.5 text-xs text-slate-400">Active doctors by department</p></div></div><div className="mt-5 space-y-4">{dashboard?.doctors.departments.length ? dashboard.doctors.departments.map((d) => <div key={d.department}><div className="mb-1.5 flex justify-between text-xs font-bold"><span>{d.department}</span><span className="text-slate-400">{d.availableDoctors}/{d.totalDoctors}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#0057d9]" style={{ width: `${d.totalDoctors ? d.availableDoctors / d.totalDoctors * 100 : 0}%` }} /></div></div>) : <p className="text-sm font-medium text-slate-400">No department staffing data available.</p>}</div></section><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><h2 className="text-base font-extrabold">Recent activity</h2><div className="mt-4 space-y-4">{dashboard?.recentActivity.length ? dashboard.recentActivity.map((item) => <div key={item.appointment._id} className="flex gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0057d9]"><FileText size={15} /></div><div className="min-w-0"><p className="text-xs font-bold">Appointment updated</p><p className="mt-0.5 truncate text-[11px] text-slate-400">{item.appointment.patient.fullName} · {item.appointment.time}</p></div></div>) : <p className="text-sm font-medium text-slate-400">No recent activity.</p>}</div></section></div></div></main></div></div>;
 }
