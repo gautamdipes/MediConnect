@@ -68,20 +68,23 @@ export function HospitalNotifications() {
       </button>
 
       {open && (
-        <section className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl" role="menu" aria-label="Hospital notifications">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5">
+        <section className="absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] animate-in fade-in slide-in-from-top-2 duration-200" role="menu" aria-label="Hospital notifications">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div><h2 className="text-sm font-extrabold text-slate-900">Notifications</h2><p className="mt-0.5 text-[11px] font-medium text-slate-400">{unreadCount ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"}` : "You’re all caught up"}</p></div>
             {unreadCount > 0 && <button type="button" onClick={markAllAsRead} className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0057d9] hover:text-blue-700"><CheckCheck size={14} /> Mark all read</button>}
           </div>
-          <div className="max-h-80 overflow-y-auto p-2">
+          <div className="max-h-[380px] overflow-y-auto">
             {notifications.map((notification) => {
               const { Icon, tone } = iconStyles[notification.icon];
-              return <button type="button" role="menuitem" key={notification.id} onClick={() => markAsRead(notification.id)} className={`flex w-full gap-3 rounded-xl p-3 text-left transition hover:bg-slate-50 ${notification.read ? "opacity-65" : "bg-blue-50/35"}`}>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone}`}><Icon size={15} /></span>
-                <span className="min-w-0 flex-1"><span className="flex items-start justify-between gap-3"><span className="text-xs font-bold text-slate-700">{notification.title}</span>{!notification.read && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0057d9]" />}</span><span className="mt-0.5 block truncate text-[11px] font-medium text-slate-400">{notification.detail}</span><span className="mt-1 block text-[10px] font-medium text-slate-400">{notification.time}</span></span>
+              return <button type="button" role="menuitem" key={notification.id} onClick={() => markAsRead(notification.id)} className={`flex w-full items-start gap-3 border-b border-slate-50 px-5 py-3.5 text-left transition-colors hover:bg-slate-50/50 ${notification.read ? "" : "bg-blue-50/30"}`}>
+                <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone}`}><Icon size={14} /></span>
+                <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-[12.5px] font-bold text-slate-800">{notification.title}</span><span className="whitespace-nowrap text-[10px] font-medium text-slate-400">{notification.time}</span></span><span className="mt-0.5 block truncate text-[11px] font-medium text-slate-500">{notification.detail}</span></span>
+                {!notification.read && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
               </button>;
             })}
+            {notifications.length === 0 && <p className="px-5 py-12 text-center text-xs font-medium text-slate-400">No notifications yet.</p>}
           </div>
+          <div className="border-t border-slate-100 px-5 py-3"><button type="button" onClick={() => setOpen(false)} className="w-full rounded-lg py-2 text-[12px] font-bold text-blue-600 transition-colors hover:bg-blue-50">Close</button></div>
         </section>
       )}
     </div>

@@ -14,19 +14,25 @@ import GoogleSignInButton from "./GoogleSignInButton";
 
 type PortalMode = "user" | "admin" | "hospital";
 
-export default function LoginForm() {
+export default function LoginForm({ staffOnly = false }: { staffOnly?: boolean }) {
   const router = useRouter();
   const { login } = useAuth();
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [portalMode, setPortalMode] = useState<PortalMode>("user");
+  const [portalMode, setPortalMode] = useState<PortalMode>(staffOnly ? "admin" : "user");
   const [showPassword, setShowPassword] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
+  const portalCopy: Record<PortalMode, { title: string; description: string; emailLabel: string; emailPlaceholder: string }> = {
+    user: { title: "User login", description: "Access your appointments, health records, and care team.", emailLabel: "Email address", emailPlaceholder: "you@example.com" },
+    admin: { title: "Admin login", description: "Access the MediConnect administration portal.", emailLabel: "Admin email", emailPlaceholder: "admin@mediconnect.com" },
+    hospital: { title: "Hospital login", description: "Access your hospital workspace and operations.", emailLabel: "Hospital admin email", emailPlaceholder: "admin@hospital.org" },
+  };
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -110,6 +116,13 @@ export default function LoginForm() {
         ? "Sign In as Hospital"
         : "Sign In";
 
+  const changePortal = (mode: PortalMode) => {
+    setPortalMode(mode);
+    setError("");
+    setShowPassword(false);
+    reset();
+  };
+
   const toggleClass = (mode: PortalMode) => {
     const active = portalMode === mode;
     if (mode === "admin" && active) {
@@ -128,36 +141,17 @@ export default function LoginForm() {
     <div className="flex flex-col justify-center w-full max-w-md mx-auto py-6">
       <div>
         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-          Login Portal
+          {portalCopy[portalMode].title}
         </h2>
         <p className="text-gray-400 text-sm font-medium mt-1">
-          Enter your credentials to continue
+          {portalCopy[portalMode].description}
         </p>
       </div>
 
-      <div className="mt-6 flex bg-gray-100 p-1 rounded-xl border border-gray-200/40 w-full">
-        <button
-          type="button"
-          onClick={() => setPortalMode("user")}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("user")}`}
-        >
-          User
-        </button>
-        <button
-          type="button"
-          onClick={() => setPortalMode("admin")}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("admin")}`}
-        >
-          Admin
-        </button>
-        <button
-          type="button"
-          onClick={() => setPortalMode("hospital")}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${toggleClass("hospital")}`}
-        >
-          Hospital
-        </button>
-      </div>
+      {staffOnly && <div className="mt-6 flex w-full rounded-xl border border-gray-200/40 bg-gray-100 p-1">
+        <button type="button" onClick={() => changePortal("admin")} className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${toggleClass("admin")}`}>Admin</button>
+        <button type="button" onClick={() => changePortal("hospital")} className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${toggleClass("hospital")}`}>Hospital</button>
+      </div>}
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {error && (
@@ -168,11 +162,11 @@ export default function LoginForm() {
 
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-700 block">
-            Work Email
+            {portalCopy[portalMode].emailLabel}
           </label>
           <input
             type="email"
-            placeholder="name@healthcare.org"
+            placeholder={portalCopy[portalMode].emailPlaceholder}
             {...register("email")}
             className={`w-full h-11 px-4 border text-sm rounded-xl outline-none transition-all placeholder:text-gray-300 font-medium ${
               errors.email ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-gray-300"

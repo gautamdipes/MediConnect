@@ -1,95 +1,15 @@
 "use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+
+import Link from "next/link";
+import LoginForm from "@/app/(auth)/Component/LoginForm";
+import { AuthCareAnimation } from "@/components/AuthCareAnimation";
 import { BrandLogo } from "@/components/BrandLogo";
 
-export default function AdminLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleLogin = async () => {
-    setError("");
-    if (!email || !password) {
-      setError("Email and password are required");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await fetch("http://localhost:5000/api/v1/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-
-      const adminCheck = await fetch("http://localhost:5000/api/v1/admin/users", {
-        headers: { Authorization: `Bearer ${data.token}` },
-      });
-      if (!adminCheck.ok) throw new Error("You are not an admin!");
-
-      localStorage.setItem("adminToken", data.token);
-      router.push("/admin/dashboard");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6]">
-      <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-        <div className="mb-6">
-          <BrandLogo
-            size={44}
-            showText
-            subtitle="Admin Portal — Sign in to continue"
-            textClassName="text-2xl font-bold text-[#0057d9]"
-            subtitleClassName="text-gray-500 text-sm mt-1"
-          />
-        </div>
-
-        {error && (
-          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <div>
-            <label className="text-sm font-semibold text-gray-700">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0057d9]"
-              placeholder="admin@example.com"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-gray-700">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0057d9]"
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            onClick={handleLogin}
-            disabled={isLoading}
-            className="w-full py-2.5 bg-[#0057d9] text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 mt-2"
-          >
-            {isLoading ? "Signing in..." : "Sign In as Admin"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+export default function StaffLoginPage() {
+  return <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-white text-[#091E42]">
+    <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden><div className="absolute inset-0 bg-[linear-gradient(165deg,#ffffff_0%,#edf4ff_32%,#d6e6fb_58%,#0a1f45_82%,#071428_100%)]" /><div className="absolute -left-24 top-0 h-[480px] w-[480px] rounded-full bg-[#0057d9]/16 blur-[120px]" /><div className="absolute right-[-8%] top-[22%] h-[400px] w-[400px] rounded-full bg-[#003da1]/20 blur-[110px]" /></div>
+    <header className="sticky top-0 z-50 border-b border-[#0057d9]/10 bg-white/90 backdrop-blur-md"><div className="flex h-14 w-full items-center justify-between px-3 sm:px-4"><Link href="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-85"><BrandLogo size={28} /><span className="font-[family-name:var(--font-display)] text-[18px] font-semibold tracking-[-0.02em] text-[#091E42]">MediConnect</span></Link><Link href="/login" className="px-2.5 py-1.5 text-[13px] font-semibold text-[#0057d9] transition hover:text-[#0048b5]">User sign in</Link></div></header>
+    <main className="flex flex-1 items-center justify-center px-6 py-14 md:py-20"><section className="grid w-full max-w-[960px] overflow-hidden rounded-2xl border border-[#0057d9]/12 bg-white/95 shadow-[0_24px_60px_rgba(7,20,40,0.14)] md:grid-cols-[1.05fr_0.95fr]"><aside className="relative hidden flex-col justify-between overflow-hidden bg-[linear-gradient(165deg,#0057d9_0%,#003da1_55%,#071428_100%)] px-12 py-14 text-white md:flex"><div><p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#7eb6ff]">MediConnect Staff</p><h1 className="mt-8 font-[family-name:var(--font-display)] text-[40px] font-medium leading-[1.1] tracking-[-0.02em]">Welcome back.</h1><p className="mt-5 max-w-[32ch] text-[15px] leading-[1.7] text-white/70">Sign in to manage the MediConnect network or your hospital workspace.</p></div><div className="flex flex-1 items-center justify-center py-6"><AuthCareAnimation /></div><p className="text-[12px] text-white/40">Secure access for administrators and hospital teams.</p></aside><div className="flex items-center justify-center px-8 py-10 sm:px-12"><LoginForm staffOnly /></div></section></main>
+    <footer className="border-t border-[#0057d9]/10 bg-white/70 px-6 py-5 text-center text-[12px] text-[#5E6C84] backdrop-blur-sm">© {new Date().getFullYear()} MediConnect. All rights reserved.</footer>
+  </div>;
 }
