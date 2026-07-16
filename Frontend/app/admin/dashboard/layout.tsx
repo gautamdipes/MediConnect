@@ -13,8 +13,6 @@ import {
   Search,
   Bell,
   X,
-  Moon,
-  Sun,
   Shield,
   Key,
   Globe,
@@ -131,12 +129,12 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Card */}
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Profile Details</h3>
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+          <h3 className="text-base font-bold text-slate-900">Edit Profile Details</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors"
           >
             <X size={16} />
           </button>
@@ -144,14 +142,14 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-650 rounded-xl text-xs font-semibold flex items-center gap-2 dark:bg-red-950/20 dark:border-red-900/50 dark:text-red-400">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-650 rounded-xl text-xs font-semibold flex items-center gap-2">
               <AlertTriangle size={14} className="shrink-0" />
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-400">
+            <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 size={14} className="shrink-0" />
               Profile updated successfully!
             </div>
@@ -160,7 +158,7 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
           {/* Profile Image Upload */}
           <div className="flex flex-col items-center gap-2">
             <div className="relative group">
-              <div className="w-20 h-20 rounded-2xl bg-blue-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-750 flex items-center justify-center text-blue-600 text-2xl font-bold overflow-hidden shadow-inner">
+              <div className="w-20 h-20 rounded-2xl bg-blue-50 border-2 border-slate-200 flex items-center justify-center text-blue-600 text-2xl font-bold overflow-hidden shadow-inner">
                 {previewUrl ? (
                   <img src={previewUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -188,7 +186,7 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
           {/* Input Fields */}
           <div className="space-y-4">
             <div>
-              <label className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              <label className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Full Name
               </label>
               <div className="relative">
@@ -198,14 +196,14 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-750 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-[#0057d9] outline-none transition"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-[#0057d9] outline-none transition"
                   placeholder="e.g. Admin Root"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              <label className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -215,14 +213,14 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-750 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-[#0057d9] outline-none transition"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-[#0057d9] outline-none transition"
                   placeholder="e.g. admin@mediconnect.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              <label className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                 Phone Number
               </label>
               <div className="relative">
@@ -231,7 +229,7 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
                   type="text"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-750 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-[#0057d9] outline-none transition"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-[#0057d9] outline-none transition"
                   placeholder="e.g. +1 555-0199"
                 />
               </div>
@@ -242,7 +240,7 @@ function ProfileModal({ open, onClose, user, onUpdate }: ProfileModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-sm font-semibold border border-slate-200 dark:border-slate-750 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
@@ -330,9 +328,9 @@ function NotificationsDropdown({
     warning: <AlertTriangle size={14} className="text-amber-500" />,
   };
   const bgMap = {
-    info: "bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/50",
-    success: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/50",
-    warning: "bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/50",
+    info: "bg-blue-50 border-blue-100",
+    success: "bg-emerald-50 border-emerald-100",
+    warning: "bg-amber-50 border-amber-100",
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -340,12 +338,12 @@ function NotificationsDropdown({
   return (
     <div
       ref={ref}
-      className="absolute right-16 top-14 z-50 w-[360px] bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+      className="absolute right-16 top-14 z-50 w-[360px] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] animate-in fade-in slide-in-from-top-2 duration-200"
     >
-      <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Notifications</h3>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+          <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-400">
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
           </p>
         </div>
@@ -367,17 +365,17 @@ function NotificationsDropdown({
           notifications.map((n) => (
             <div
               key={n.id}
-              className={`px-5 py-3.5 border-b border-slate-50 dark:border-slate-800/50 flex items-start gap-3 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/40 ${!n.read ? "bg-blue-50/30 dark:bg-blue-950/20" : ""}`}
+              className={`flex items-start gap-3 border-b border-slate-50 px-5 py-3.5 transition-colors hover:bg-slate-50/50 ${!n.read ? "bg-blue-50/30" : ""}`}
             >
               <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center border ${bgMap[n.type]}`}>
                 {iconMap[n.type]}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[12.5px] font-bold text-slate-800 dark:text-slate-200 truncate">{n.title}</p>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap">{n.time}</span>
+                  <p className="truncate text-[12.5px] font-bold text-slate-800">{n.title}</p>
+                  <span className="whitespace-nowrap text-[10px] font-medium text-slate-400">{n.time}</span>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">{n.message}</p>
+                <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500">{n.message}</p>
               </div>
               {!n.read && <span className="mt-2 w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
             </div>
@@ -385,10 +383,10 @@ function NotificationsDropdown({
         )}
       </div>
 
-      <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800">
+      <div className="border-t border-slate-100 px-5 py-3">
         <button
           onClick={onClose}
-          className="w-full py-2 text-[12px] font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="w-full rounded-lg py-2 text-[12px] font-bold text-blue-600 transition-colors hover:bg-blue-50"
         >
           Close
         </button>
@@ -401,8 +399,6 @@ function NotificationsDropdown({
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
-  darkMode: boolean;
-  onToggleDarkMode: () => void;
   adminUser: any;
   onOpenProfile: () => void;
 }
@@ -410,8 +406,6 @@ interface SettingsPanelProps {
 function SettingsPanel({
   open,
   onClose,
-  darkMode,
-  onToggleDarkMode,
   adminUser,
   onOpenProfile,
 }: SettingsPanelProps) {
@@ -424,7 +418,7 @@ function SettingsPanel({
   const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <button
       onClick={onChange}
-      className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${checked ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"}`}
+      className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${checked ? "bg-blue-600" : "bg-slate-200"}`}
     >
       <span
         className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "left-[22px]" : "left-[3px]"}`}
@@ -445,12 +439,12 @@ function SettingsPanel({
   }) => (
     <div className="flex items-center justify-between py-3.5">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center">
-          <Icon size={16} className="text-slate-500 dark:text-slate-450" />
+        <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+          <Icon size={16} className="text-slate-500" />
         </div>
         <div>
-          <p className="text-[13px] font-bold text-slate-800 dark:text-slate-200">{label}</p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{desc}</p>
+          <p className="text-[13px] font-bold text-slate-800">{label}</p>
+          <p className="text-[11px] text-slate-400 font-medium">{desc}</p>
         </div>
       </div>
       {children}
@@ -463,21 +457,21 @@ function SettingsPanel({
       <div className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm transition-opacity animate-in fade-in duration-200" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-50 h-full w-[400px] bg-white dark:bg-slate-900 shadow-[-20px_0_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-100 dark:border-slate-800">
+      <div className="fixed right-0 top-0 z-50 h-full w-[400px] bg-white shadow-[-20px_0_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-100">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(0,87,217,0.25)]">
               <Settings size={18} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Settings</h2>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">System Configuration</p>
+              <h2 className="text-base font-bold text-slate-900">Settings</h2>
+              <p className="text-[11px] text-slate-400 font-medium">System Configuration</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors"
           >
             <X size={16} />
           </button>
@@ -491,7 +485,7 @@ function SettingsPanel({
               onClose();
               onOpenProfile();
             }}
-            className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/40 dark:to-slate-800/20 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-all group"
+            className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl p-5 border border-slate-100 cursor-pointer hover:border-blue-400 transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-md overflow-hidden shrink-0">
@@ -502,39 +496,29 @@ function SettingsPanel({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors truncate">
+                <p className="text-[15px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                   {adminUser?.fullName || "Admin Root"}
                 </p>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                <p className="text-[12px] text-slate-500 font-medium truncate">
                   {adminUser?.email || "admin@mediconnect.com"}
                 </p>
                 <div className="flex items-center justify-between mt-1">
                   <div className="flex items-center gap-1.5">
                     <Shield size={11} className="text-emerald-500" />
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-550 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
                       {adminUser?.role || "Admin"}
                     </span>
                   </div>
-                  <span className="text-[11px] text-blue-600 dark:text-blue-450 font-bold group-hover:underline">Edit Profile</span>
+                  <span className="text-[11px] text-blue-600 font-bold group-hover:underline">Edit Profile</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Appearance */}
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Appearance</p>
-            <div className="bg-white dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 px-4 divide-y divide-slate-50 dark:divide-slate-800/50">
-              <SettingRow icon={darkMode ? Moon : Sun} label="Dark Mode" desc="Toggle dark interface theme">
-                <Toggle checked={darkMode} onChange={onToggleDarkMode} />
-              </SettingRow>
-            </div>
-          </div>
-
           {/* Notifications */}
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Notifications</p>
-            <div className="bg-white dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 px-4 divide-y divide-slate-50 dark:divide-slate-800/50">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Notifications</p>
+            <div className="bg-white rounded-xl border border-slate-100 px-4 divide-y divide-slate-50">
               <SettingRow icon={Bell} label="Email Alerts" desc="Receive critical system alerts">
                 <Toggle checked={emailNotifs} onChange={() => setEmailNotifs(!emailNotifs)} />
               </SettingRow>
@@ -543,8 +527,8 @@ function SettingsPanel({
 
           {/* System */}
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">System</p>
-            <div className="bg-white dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 px-4 divide-y divide-slate-50 dark:divide-slate-800/50">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">System</p>
+            <div className="bg-white rounded-xl border border-slate-100 px-4 divide-y divide-slate-50">
               <SettingRow icon={Database} label="Auto Sync" desc="Auto-sync data with cloud">
                 <Toggle checked={autoSync} onChange={() => setAutoSync(!autoSync)} />
               </SettingRow>
@@ -552,7 +536,7 @@ function SettingsPanel({
                 <select
                   value={sessionTimeout}
                   onChange={(e) => setSessionTimeout(e.target.value)}
-                  className="text-[12px] font-bold text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-750 rounded-lg px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 outline-none focus:border-blue-455"
+                  className="text-[12px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 outline-none focus:border-blue-455"
                 >
                   <option value="15">15 min</option>
                   <option value="30">30 min</option>
@@ -561,20 +545,20 @@ function SettingsPanel({
                 </select>
               </SettingRow>
               <SettingRow icon={Globe} label="API Version" desc="Current backend version">
-                <span className="text-[12px] font-bold text-slate-655 bg-slate-100 dark:bg-slate-800 dark:text-slate-350 px-2.5 py-1 rounded-lg">v1.0.0</span>
+                <span className="text-[12px] font-bold text-slate-655 bg-slate-100 px-2.5 py-1 rounded-lg">v1.0.0</span>
               </SettingRow>
               <SettingRow icon={Key} label="JWT Secret" desc="Token signing algorithm">
-                <span className="text-[12px] font-bold text-slate-655 bg-slate-100 dark:bg-slate-800 dark:text-slate-350 px-2.5 py-1 rounded-lg">HS256</span>
+                <span className="text-[12px] font-bold text-slate-655 bg-slate-100 px-2.5 py-1 rounded-lg">HS256</span>
               </SettingRow>
             </div>
           </div>
 
           {/* Danger Zone */}
           <div>
-            <p className="text-[10px] font-bold text-red-400 dark:text-red-500 uppercase tracking-wider mb-2">Danger Zone</p>
-            <div className="bg-red-50/50 dark:bg-red-950/10 rounded-xl border border-red-100 dark:border-red-900/30 p-4">
-              <p className="text-[12px] font-bold text-red-700 dark:text-red-450 mb-1">Clear All Sessions</p>
-              <p className="text-[11px] text-red-400 dark:text-red-500/80 font-medium mb-3">
+            <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-2">Danger Zone</p>
+            <div className="bg-red-50/50 rounded-xl border border-red-100 p-4">
+              <p className="text-[12px] font-bold text-red-700 mb-1">Clear All Sessions</p>
+              <p className="text-[11px] text-red-400 font-medium mb-3">
                 This will invalidate all active admin sessions and require re-authentication.
               </p>
               <button
@@ -591,8 +575,8 @@ function SettingsPanel({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-950/50">
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center">
+        <div className="px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50">
+          <p className="text-[10px] text-slate-400 font-medium text-center">
             Mediconnect Admin • v1.0.0 • {new Date().getFullYear()}
           </p>
         </div>
@@ -612,7 +596,6 @@ export default function AdminLayout({
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -622,23 +605,7 @@ export default function AdminLayout({
     document.documentElement.classList.remove("dark");
     document.body.classList.remove("dark");
     localStorage.setItem("adminDarkMode", "false");
-    setDarkMode(false);
   }, []);
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-      localStorage.setItem('adminDarkMode', 'true');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-      localStorage.setItem('adminDarkMode', 'false');
-    }
-  };
 
   // Fetch admin user data on mount
   const fetchProfile = async () => {
@@ -705,8 +672,6 @@ export default function AdminLayout({
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}
-        darkMode={darkMode}
-        onToggleDarkMode={toggleDarkMode}
         adminUser={adminUser}
         onOpenProfile={() => setShowProfileModal(true)}
       />
