@@ -4,18 +4,25 @@ import { UserService } from "../services/user.service";
 const userService = new UserService();
 
 export const registerUser = async (req: Request, res: Response) => {
-  if (!req.body?.email || !req.body?.password) {
+  // Map incoming fields to service expected format
+  const { firstname, lastname, email, password, phoneNumber } = req.body;
+  const fullName = firstname && lastname ? `${firstname} ${lastname}` : req.body.fullName || '';
+  if (!email || !password) {
     return res.status(400).json({ success: false, message: "Email and password are required" });
   }
   try {
-    const result = await userService.register(req.body);
-    // Respond with success flag and standardized message expected by tests
+    const result = await userService.register({
+      fullName,
+      email,
+      password,
+      phoneNumber: phoneNumber || ''
+    });
     return res.status(201).json({ success: true, message: "User Created", user: result.user });
   } catch (err: any) {
-    // Duplicate email or other validation errors
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
 
 export const loginUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
@@ -32,12 +39,15 @@ export const loginUser = async (req: Request, res: Response) => {
 };
 
 export const googleLoginUser = async (req: Request, res: Response) => {
+  const idToken = req.body?.idToken || req.body?.credential;
+  if (!idToken) {
+    return res.status(400).json({ success: false, message: "Google ID token is required" });
   }
   try {
     const result = await userService.loginWithGoogle(idToken);
-    return res.status(200).json(result);
+    return res.status(200).json({ success: true, token: result.token, user: result.user });
   } catch (err: any) {
-    return res.status(401).json({ message: err.message || "Google sign-in failed" });
+    return res.status(401).json({ success: false, message: err.message || "Google sign-in failed" });
   }
 };
 
@@ -45,19 +55,17 @@ export const updateUser = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-
     const updateData = { ...req.body };
     if (req.file) {
       updateData.adminProfileImage = `/uploads/${req.file.filename}`;
     }
     delete updateData.profileImage;
-
     const result = await userService.updateUser(userId, updateData);
     const user = result.user as any;
-
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       user: {
         _id: user._id,
         fullName: user.fullName,
@@ -69,7 +77,7 @@ export const updateUser = async (req: Request, res: Response) => {
       message: result.message,
     });
   } catch (err: any) {
-    res.status(400).json({ message: err.message });
+    return res.status(400).json({ success: false, message: err.message });
   }
 };
 
