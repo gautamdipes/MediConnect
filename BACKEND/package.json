@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "seed:hospital": "tsx src/scripts/seed-hospital-user.ts",
     "seed:demo-accounts": "tsx src/scripts/seed-demo-accounts.ts",
-    "remove:demo-accounts": "tsx src/scripts/remove-demo-accounts.ts"
+    "remove:demo-accounts": "tsx src/scripts/remove-demo-accounts.ts",
+    "test": "jest --verbose --detectOpenHandles"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -29,10 +30,15 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^24.0.0",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0"
   },
