@@ -129,8 +129,8 @@ function ViewModal({ hospital, onClose }: { hospital: Hospital; onClose: () => v
           <div className="bg-slate-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Departments</p>
             <div className="flex flex-wrap gap-1.5">
-              {hospital.departments.map((d) => (
-                <span key={d} className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
+              {hospital.departments.map((d, idx) => (
+                <span key={`${d}-${idx}`} className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
                   {d}
                 </span>
               ))}
@@ -378,11 +378,11 @@ export default function AdminHospitalsPage() {
 
   // ── Filter ──────────────────────────────────────────────────────────────────
 
-  const facilityTypes = ["All", ...Array.from(new Set(hospitals.map((h) => h.type)))];
+  const facilityTypes = ["All", ...Array.from(new Set(hospitals.map((h) => h.type || "General Hospital")))];
 
   const filtered = hospitals
     .filter((h) => statusFilter === "All" || h.status === statusFilter)
-    .filter((h) => typeFilter === "All" || h.type === typeFilter)
+    .filter((h) => typeFilter === "All" || (h.type || "General Hospital") === typeFilter)
     .filter((h) =>
       search === "" ||
       h.hospitalName.toLowerCase().includes(search.toLowerCase()) ||
@@ -606,7 +606,7 @@ export default function AdminHospitalsPage() {
                   )}
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-800 truncate">{hospital.hospitalName}</p>
-                    <p className="text-[11px] text-slate-400 font-medium truncate">{hospital.type}</p>
+                    <p className="text-[11px] text-slate-400 font-medium truncate">{hospital.type || "General Hospital"}</p>
                   </div>
                 </div>
 
@@ -617,8 +617,8 @@ export default function AdminHospitalsPage() {
 
                 {/* Departments */}
                 <div className="col-span-3 flex flex-wrap gap-1">
-                  {hospital.departments.slice(0, 3).map((d) => (
-                    <span key={d} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500">
+                  {hospital.departments.slice(0, 3).map((d, idx) => (
+                    <span key={`${d}-${idx}`} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500">
                       {d}
                     </span>
                   ))}
