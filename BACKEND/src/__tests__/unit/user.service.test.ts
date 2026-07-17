@@ -72,19 +72,19 @@ describe('UserService Unit Tests (5 cases)', () => {
   });
 
   test('login - success returns token', async () => {
-    const user = { _id: 'uid', email: 'test@example.com', password: 'hashedPwd' };
+    const user = { _id: 'uid', email: 'test@example.com', password: '$2a$10$hashedPwd' };
     mockRepo.findByEmail.mockResolvedValue(user);
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
     (jwt.sign as jest.Mock).mockReturnValue('jwtToken');
 
     const result = await userService.login({ email: 'test@example.com', password: 'plainPwd' });
-    expect(bcrypt.compare).toHaveBeenCalledWith('plainPwd', 'hashedPwd');
+    expect(bcrypt.compare).toHaveBeenCalledWith('plainPwd', '$2a$10$hashedPwd');
     expect(jwt.sign).toHaveBeenCalled();
     expect(result.token).toBe('jwtToken');
   });
 
   test('login - wrong password throws', async () => {
-    const user = { _id: 'uid', email: 'test@example.com', password: 'hashedPwd' };
+    const user = { _id: 'uid', email: 'test@example.com', password: '$2a$10$hashedPwd' };
     mockRepo.findByEmail.mockResolvedValue(user);
     (bcrypt.compare as jest.Mock).mockResolvedValue(false);
     await expect(userService.login({ email: 'test@example.com', password: 'badPwd' })).rejects.toThrow();

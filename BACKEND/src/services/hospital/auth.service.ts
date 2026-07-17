@@ -7,7 +7,9 @@ const userRepository = new UserRepository();
 
 export class HospitalAuthService {
   async login(data: { email: string; password: string }) {
-    const user = await userRepository.findByEmail(data.email);
+    // Normalize email for case-insensitive lookup
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const user = await userRepository.findByEmail(normalizedEmail);
 
     if (!user || user.role !== "hospital") {
       throw new Error("Invalid email or password");
@@ -18,7 +20,7 @@ export class HospitalAuthService {
     }
 
     if (!user.password) {
-      throw new Error("Invalid email or password");
+      throw new Error("This account uses Google sign-in. Please continue with Google.");
     }
 
     const passwordIsBcryptHash = /^\$2[aby]\$\d{2}\$/.test(user.password);

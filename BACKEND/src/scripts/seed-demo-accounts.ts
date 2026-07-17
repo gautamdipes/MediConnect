@@ -44,9 +44,13 @@ async function upsertUser(account: Account, hospitalId?: string) {
   const existing = await UserModel.findOne({ email: account.email });
   const user = existing || new UserModel({ email: account.email });
 
+  // Hash password for secure storage (seed script runs only in dev)
+  const bcrypt = require('bcryptjs');
+  const hashedPassword = await bcrypt.hash(account.password, 10);
+
   user.fullName = account.fullName;
   user.email = account.email;
-  user.password = account.password;
+  user.password = hashedPassword;
   user.phoneNumber = account.phoneNumber;
   user.role = account.role;
   user.authProvider = "local";
@@ -70,19 +74,8 @@ async function seed() {
     });
   }
 
-  const existingAdmin = await UserModel.findOne({ role: "admin" });
-  if (existingAdmin && existingAdmin.email !== credentials.admin.email) {
-    const targetExists = await UserModel.exists({ email: credentials.admin.email });
-    if (targetExists) throw new Error(`Cannot rename the existing admin: ${credentials.admin.email} is already in use.`);
-    existingAdmin.email = credentials.admin.email;
-    existingAdmin.fullName = credentials.admin.fullName;
-    existingAdmin.password = credentials.admin.password;
-    existingAdmin.phoneNumber = credentials.admin.phoneNumber;
-    existingAdmin.authProvider = "local";
-    await existingAdmin.save();
-  } else {
-    await upsertUser(credentials.admin);
-  }
+  // Ensure admin account exists and is properly hashed
+  await upsertUser(credentials.admin);
 
   await upsertUser(credentials.hospital, hospital._id.toString());
   await upsertUser(credentials.patient);

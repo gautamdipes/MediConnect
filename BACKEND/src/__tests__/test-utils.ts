@@ -25,11 +25,16 @@ export async function registerAndLogin(isAdmin = false) {
   if (isAdmin) payload.role = "admin"; // assuming role can be set directly
 
   // Register
-  await request(app).post("/api/auth/register").send(payload).expect(201);
+  await request(app).post("/api/v1/users/register").send(payload).expect(201);
+
+  if (isAdmin) {
+    const { UserModel } = require("../models/user.model");
+    await UserModel.updateOne({ email }, { role: "admin" });
+  }
 
   // Login
   const loginRes = await request(app)
-    .post("/api/auth/login")
+    .post("/api/v1/users/login")
     .send({ email, password })
     .expect(200);
 

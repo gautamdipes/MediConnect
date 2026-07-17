@@ -149,16 +149,31 @@ export class UserService {
   // User login – returns JWT token
   // ---------------------------------------------------------------
   async login(data: { email: string; password: string }) {
-    const user = await this.userRepository.findByEmail(data.email);
+    // Normalize email for case‑insensitive lookup
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const user = await this.userRepository.findByEmail(normalizedEmail);
+
     if (!user) {
       throw new Error("Invalid email or password");
     }
     if (!user.password) {
       throw new Error("This account uses Google sign-in. Please continue with Google.");
     }
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
-    if (!isPasswordValid) {
-      throw new Error("Invalid email or password");
+    // Detect if stored password is a bcrypt hash
+    const isLegacy = !/^\$2[aby]\$\d{2}\$/.test(user.password);
+    if (isLegacy) {
+      // Plain‑text legacy password comparison
+      if (user.password !== data.password) {
+        throw new Error("Invalid email or password");
+      }
+      // Upgrade to bcrypt hash for future logins
+      user.password = await bcrypt.hash(data.password, 10);
+      await this.userRepository.updateUser(user._id.toString(), { password: user.password });
+    } else {
+      const isPasswordValid = await bcrypt.compare(data.password, user.password);
+      if (!isPasswordValid) {
+        throw new Error("Invalid email or password");
+      }
     }
     return this.issueAuthResponse(user);
   }
