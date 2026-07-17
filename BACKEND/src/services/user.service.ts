@@ -8,14 +8,18 @@ import { UserRepository } from "../repositories/user.repository";
 import { JWT_SECRET } from "../config/constant";
 import { sendEmail } from "../config/email";
 
-const userRepository = new UserRepository();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 export class UserService {
   private readonly resetCodeLifetimeMs = 15 * 60 * 1000;
   private readonly resetRequestWindowMs = 60 * 60 * 1000;
   private readonly maxResetRequestsPerWindow = 3;
   private readonly maxResetCodeAttempts = 5;
+  private readonly userRepository: UserRepository;
+  private readonly googleClient: OAuth2Client;
+
+  constructor(userRepository?: UserRepository) {
+    this.userRepository = userRepository ?? new UserRepository();
+    this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  }
 
   private clearResetCode(user: any) {
     user.resetPasswordCodeHash = undefined;
@@ -25,7 +29,7 @@ export class UserService {
 
   async requestPasswordReset(rawEmail: string) {
     const email = rawEmail.trim().toLowerCase();
-    const user = await userRepository.findByEmailWithPasswordResetFields(email);
+    const user = await this.userRepository.findByEmailWithPasswordResetFields(email);
 
     // Do not reveal whether an account exists or accepts password sign-in.
     if (!user || !user.password) return;
@@ -43,7 +47,9 @@ export class UserService {
     user.resetPasswordCodeExpiresAt = new Date(now.getTime() + this.resetCodeLifetimeMs);
     user.resetPasswordCodeAttempts = 0;
     user.resetPasswordRequestCount = (user.resetPasswordRequestCount || 0) + 1;
-    await user.save();
+    if (typeof (user as any).save === 'function') {
+      await user.save();
+    }
 
     try {
       await sendEmail(
@@ -72,7 +78,7 @@ export class UserService {
   }
 
   private async getValidResetUser(rawEmail: string, code: string) {
-    const user = await userRepository.findByEmailWithPasswordResetFields(rawEmail.trim().toLowerCase());
+    const user = await this.userRepository.findByEmailWithPasswordResetFields(rawEmail.trim().toLowerCase());
     if (!user || !user.password || !user.resetPasswordCodeHash || !user.resetPasswordCodeExpiresAt || user.resetPasswordCodeExpiresAt.getTime() < Date.now()) {
       throw new Error("The verification code is invalid or has expired");
     }
@@ -91,31 +97,17 @@ export class UserService {
     return user;
   }
 
-  checkPassword(userId: string, currentPassword: any) {
-      throw new Error("Method not implemented.");
-  }
-  deleteUser(userId: string) {
-      throw new Error("Method not implemented.");
-  }
   // ---------------------------------------------------------------
   // Remove a user's profile image (file system + DB cleanup)
   // ---------------------------------------------------------------
   async removeProfileImage(userId: string) {
-    const user = await userRepository.findById(userId);
-
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("User not found");
     }
-
     const storedPath = user.profileImage as string | undefined;
-
     if (storedPath) {
-      const absolutePath = path.resolve(
-        __dirname,
-        "../../uploads",
-        path.basename(storedPath)
-      );
-
+      const absolutePath = path.resolve(__dirname, "../../uploads", path.basename(storedPath));
       try {
         await fs.unlink(absolutePath);
         console.log(`Deleted profile image: ${absolutePath}`);
@@ -125,39 +117,24 @@ export class UserService {
         }
       }
     }
-
-    await userRepository.updateUser(userId, {
-      profileImage: undefined,
-    });
+    await this.userRepository.updateUser(userId, { profileImage: undefined });
   }
 
   // ---------------------------------------------------------------
   // Register a new user
   // ---------------------------------------------------------------
-  async register(data: {
-    fullName: string;
-    email: string;
-    password: string;
-    phoneNumber: string;
-  }) {
-    const existing = await userRepository.findByEmail(data.email);
-
+  async register(data: { fullName: string; email: string; password: string; phoneNumber: string }) {
+    const existing = await this.userRepository.findByEmail(data.email);
     if (existing) {
       throw new Error("Email already registered");
     }
-
-    const hashedPassword = await bcrypt.hash(
-      data.password,
-      10
-    );
-
-    const user = await userRepository.createUser({
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await this.userRepository.createUser({
       fullName: data.fullName,
       email: data.email,
       password: hashedPassword,
       phoneNumber: data.phoneNumber,
     });
-
     return {
       user: {
         fullName: user.fullName,
@@ -171,38 +148,18 @@ export class UserService {
   // ---------------------------------------------------------------
   // User login – returns JWT token
   // ---------------------------------------------------------------
-  async login(data: {
-    email: string;
-    password: string;
-  }) {
-    const user = await userRepository.findByEmail(
-      data.email
-    );
-
+  async login(data: { email: string; password: string }) {
+    const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
-      throw new Error(
-        "Invalid email or password"
-      );
+      throw new Error("Invalid email or password");
     }
-
     if (!user.password) {
-      throw new Error(
-        "This account uses Google sign-in. Please continue with Google."
-      );
+      throw new Error("This account uses Google sign-in. Please continue with Google.");
     }
-
-    const isPasswordValid =
-      await bcrypt.compare(
-        data.password,
-        user.password
-      );
-
+    const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
-      throw new Error(
-        "Invalid email or password"
-      );
+      throw new Error("Invalid email or password");
     }
-
     return this.issueAuthResponse(user);
   }
 
@@ -213,13 +170,9 @@ export class UserService {
     if (!process.env.GOOGLE_CLIENT_ID) {
       throw new Error("Google sign-in is not configured on the server");
     }
-
     let payload;
     try {
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
+      const ticket = await this.googleClient.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
       payload = ticket.getPayload();
     } catch (err: any) {
       const msg = String(err?.message || "");
@@ -230,19 +183,13 @@ export class UserService {
       }
       throw new Error(msg || "Invalid Google token");
     }
-
     if (!payload?.email || !payload.sub) {
       throw new Error("Invalid Google token");
     }
-
     if (payload.email_verified === false) {
       throw new Error("Google email is not verified");
     }
-
-    let user =
-      (await userRepository.findByGoogleId(payload.sub)) ||
-      (await userRepository.findByEmail(payload.email));
-
+    let user = (await this.userRepository.findByGoogleId(payload.sub)) || (await this.userRepository.findByEmail(payload.email));
     if (user) {
       const updates: Record<string, string> = {};
       if (!user.googleId) updates.googleId = payload.sub;
@@ -253,10 +200,10 @@ export class UserService {
         updates.profileImage = payload.picture;
       }
       if (Object.keys(updates).length > 0) {
-        user = (await userRepository.updateUser(String(user._id), updates))!;
+        user = (await this.userRepository.updateUser(String(user._id), updates))!;
       }
     } else {
-      user = await userRepository.createUser({
+      user = await this.userRepository.createUser({
         fullName: payload.name || payload.email.split("@")[0],
         email: payload.email,
         googleId: payload.sub,
@@ -266,22 +213,11 @@ export class UserService {
         role: "user",
       });
     }
-
     return this.issueAuthResponse(user);
   }
 
   private issueAuthResponse(user: any) {
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-      },
-      JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
+    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
     return {
       token,
       user: {
@@ -298,86 +234,36 @@ export class UserService {
   // ---------------------------------------------------------------
   // Update user profile
   // ---------------------------------------------------------------
-  async updateUser(
-    userId: string,
-    data: any
-  ) {
-    const result =
-      await userRepository.updateUser(
-        userId,
-        data
-      );
-
-    return {
-      user: result,
-      message:
-        "User updated successfully",
-    };
+  async updateUser(userId: string, data: any) {
+    const result = await this.userRepository.updateUser(userId, data);
+    return { user: result, message: "User updated successfully" };
   }
 
   // ---------------------------------------------------------------
   // Update Password
   // ---------------------------------------------------------------
-  async updatePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string
-  ) {
-    const user =
-      await userRepository.findById(
-        userId
-      );
-
+  async updatePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("User not found");
     }
-
     if (!user.password) {
-      throw new Error(
-        "This account uses Google sign-in and has no password set"
-      );
+      throw new Error("This account uses Google sign-in and has no password set");
     }
-
-    const isPasswordValid =
-      await bcrypt.compare(
-        currentPassword,
-        user.password
-      );
-
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
-      throw new Error(
-        "Current password is incorrect"
-      );
+      throw new Error("Current password is incorrect");
     }
-
-    const hashedPassword =
-      await bcrypt.hash(
-        newPassword,
-        10
-      );
-
-    await userRepository.updateUser(
-      userId,
-      {
-        password: hashedPassword,
-      }
-    );
-
-    return {
-      message:
-        "Password updated successfully",
-    };
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.updateUser(userId, { password: hashedPassword });
+    return { message: "Password updated successfully" };
   }
 
   // ---------------------------------------------------------------
   // Get user by ID
   // ---------------------------------------------------------------
   async getUserById(userId: string) {
-    const user =
-      await userRepository.findById(
-        userId
-      );
-
+    const user = await this.userRepository.findById(userId);
     return user;
   }
 }
