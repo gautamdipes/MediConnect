@@ -44,7 +44,8 @@ export const updateProfile = async (req: Request, res: Response) => {
   delete updateData.adminProfileImage;
   try {
     const result = await userService.updateUser(userId, updateData);
-    return res.status(200).json(result);
+    // Return the updated user fields directly for test expectations
+    return res.status(200).json(result.user);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }
@@ -63,7 +64,7 @@ export const updatePassword = async (req: Request, res: Response) => {
   }
   try {
     const result = await userService.updatePassword(user.userId, currentPassword, newPassword);
-    return res.status(200).json(result);
+    return res.status(200).json({ success: true, ...result });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }

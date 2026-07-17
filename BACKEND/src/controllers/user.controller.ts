@@ -5,33 +5,33 @@ const userService = new UserService();
 
 export const registerUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
-    return res.status(400).json({ message: "Email and password are required" });
+    return res.status(400).json({ success: false, message: "Email and password are required" });
   }
   try {
     const result = await userService.register(req.body);
-    res.status(201).json(result);
+    // Respond with success flag and standardized message expected by tests
+    return res.status(201).json({ success: true, message: "User Created", user: result.user });
   } catch (err: any) {
-    res.status(400).json({ message: err.message });
+    // Duplicate email or other validation errors
+    return res.status(400).json({ success: false, message: err.message });
   }
 };
 
 export const loginUser = async (req: Request, res: Response) => {
   if (!req.body?.email || !req.body?.password) {
-    return res.status(400).json({ message: "Email and password are required" });
+    return res.status(400).json({ success: false, message: "Email and password are required" });
   }
   try {
     const result = await userService.login(req.body);
-    res.status(200).json(result);
+    // Include success flag for the test suite
+    return res.status(200).json({ success: true, token: result.token, user: result.user });
   } catch (err: any) {
-    // ✅ Fixed — send response directly instead of throwing
-    return res.status(401).json({ message: err.message || "Invalid email or password" });
+    // Return failure with success flag false
+    return res.status(401).json({ success: false, message: err.message || "Invalid email or password" });
   }
 };
 
 export const googleLoginUser = async (req: Request, res: Response) => {
-  const idToken = req.body?.idToken || req.body?.credential;
-  if (!idToken) {
-    return res.status(400).json({ message: "Google ID token is required" });
   }
   try {
     const result = await userService.loginWithGoogle(idToken);
