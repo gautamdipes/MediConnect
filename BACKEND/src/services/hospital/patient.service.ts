@@ -10,7 +10,7 @@ function escapeRegex(value: string) {
 
 function serializePatient(patient: any) {
   return {
-    _id: patient._id,
+    _id: String(patient._id),
     fullName: patient.fullName,
     email: patient.email,
     phoneNumber: patient.phoneNumber || null,
@@ -130,13 +130,8 @@ export class HospitalPatientService {
   }
 
   async getPatientDetails(hospitalId: string, patientId: string) {
-    const hasHospitalRelationship = await AppointmentModel.exists({
-      hospitalId,
-      patientId,
-      status: { $ne: "CANCELLED" as const },
-    });
-
-    if (!hasHospitalRelationship) {
+    const patientLink = await HospitalPatientModel.findOne({ hospitalId, _id: patientId });
+    if (!patientLink) {
       throw { status: 404, message: "Patient not found for this hospital" };
     }
 
