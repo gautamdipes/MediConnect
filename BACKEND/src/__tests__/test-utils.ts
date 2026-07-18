@@ -7,7 +7,13 @@ import bcrypt from "bcryptjs";
 /** Clear the test database between suites */
 export async function clearDatabase() {
   if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
-    await mongoose.connection.db.dropDatabase();
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    await Promise.all(
+      collections
+        .map((c) => c.name)
+        .filter((name) => !name.startsWith("system."))
+        .map((name) => mongoose.connection.db!.collection(name).deleteMany({}))
+    );
   }
 }
 

@@ -11,7 +11,7 @@
     "seed:hospital": "tsx src/scripts/seed-hospital-user.ts",
     "seed:demo-accounts": "tsx src/scripts/seed-demo-accounts.ts",
     "remove:demo-accounts": "tsx src/scripts/remove-demo-accounts.ts",
-    "test": "jest --verbose --detectOpenHandles"
+    "test": "jest --verbose --runInBand --detectOpenHandles"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

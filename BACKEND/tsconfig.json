@@ -9,6 +9,7 @@
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
+    "types": ["node", "jest"],
 
     
     "forceConsistentCasingInFileNames": true,
