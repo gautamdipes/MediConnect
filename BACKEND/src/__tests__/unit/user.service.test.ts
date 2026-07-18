@@ -79,7 +79,7 @@ describe("UserService Unit Tests", () => {
       expect(sendEmail as jest.Mock).toHaveBeenCalledTimes(1);
 
       const user = await repo.findByEmailWithPasswordResetFields("john@example.com");
-      const code = extractCode((sendEmail as jest.Mock).mock.calls[0][1]);
+      const code = extractCode((sendEmail as jest.Mock).mock.calls[0][2]);
       await service.verifyPasswordResetCode("john@example.com", code);
       await service.resetPassword("john@example.com", code, "BrandNew123!");
       const login = await service.login({ email: "john@example.com", password: "BrandNew123!" });
