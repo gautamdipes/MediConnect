@@ -1,1 +1,4 @@
-{}
+{
+  "typescript.tsdk": "BACKEND/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

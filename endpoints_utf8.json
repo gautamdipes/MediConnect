@@ -1,0 +1,352 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\auth.routes.ts",
+        "LineNumber":  9,
+        "Line":  "router.get(\"/whoami\", authMiddleware, whoami);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\auth.routes.ts",
+        "LineNumber":  12,
+        "Line":  "router.post(\"/update\", authMiddleware, uploads.single(\"file\"), updateProfile);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\auth.routes.ts",
+        "LineNumber":  13,
+        "Line":  "router.put(\"/password\", authMiddleware, updatePassword);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\medical-record.routes.ts",
+        "LineNumber":  14,
+        "Line":  "router.post(\"/\", authMiddleware, uploads.single(\"file\"), createMedicalRecord);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\medical-record.routes.ts",
+        "LineNumber":  15,
+        "Line":  "router.get(\"/\", authMiddleware, getMedicalRecords);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\medical-record.routes.ts",
+        "LineNumber":  16,
+        "Line":  "router.get(\"/:id\", authMiddleware, getMedicalRecordById);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\medical-record.routes.ts",
+        "LineNumber":  17,
+        "Line":  "router.put(\"/:id\", authMiddleware, uploads.single(\"file\"), updateMedicalRecord);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\medical-record.routes.ts",
+        "LineNumber":  18,
+        "Line":  "router.delete(\"/:id\", authMiddleware, deleteMedicalRecord);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\public.routes.ts",
+        "LineNumber":  6,
+        "Line":  "router.get(\"/landing\", getLanding);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  22,
+        "Line":  "router.post(\"/register\", registerUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  23,
+        "Line":  "router.post(\"/login\", loginUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  24,
+        "Line":  "router.post(\"/google\", googleLoginUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  25,
+        "Line":  "router.post(\"/password-reset/request\", requestPasswordReset);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  26,
+        "Line":  "router.post(\"/password-reset/verify\", verifyPasswordResetCode);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  27,
+        "Line":  "router.post(\"/password-reset/confirm\", confirmPasswordReset);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  28,
+        "Line":  "router.post(\"/auth/profile/upload\", authMiddleware, uploads.single(\"file\"), uploadProfileImage);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  31,
+        "Line":  "router.get(\"/me\", authMiddleware, async (req, res) =\u003e {"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  50,
+        "Line":  "router.put(\"/profile\", authMiddleware, uploads.single(\"file\"), updateUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  53,
+        "Line":  "router.get(\"/dashboard\", authMiddleware, getDashboardOverview);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  56,
+        "Line":  "router.get(\"/overview\", authMiddleware, getUserOverview);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  59,
+        "Line":  "router.get(\"/medical-records\", authMiddleware, getMedicalRecords);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  62,
+        "Line":  "router.get(\"/appointments\", authMiddleware, listMyAppointments);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  63,
+        "Line":  "router.post(\"/appointments\", authMiddleware, bookAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  64,
+        "Line":  "router.patch(\"/appointments/:id/cancel\", authMiddleware, cancelMyAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  67,
+        "Line":  "router.get(\"/hospitals\", authMiddleware, listHospitals);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  68,
+        "Line":  "router.get(\"/doctors\", authMiddleware, listDoctors);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\user.routes.ts",
+        "LineNumber":  71,
+        "Line":  "router.post(\"/chat\", authMiddleware, sendChatMessage);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  17,
+        "Line":  "router.get(\"/\", listAppointments);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  18,
+        "Line":  "router.post(\"/\", createAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  19,
+        "Line":  "router.get(\"/:id\", getAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  20,
+        "Line":  "router.patch(\"/:id/status\", updateAppointmentStatus);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  21,
+        "Line":  "router.put(\"/:id\", updateAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\appointment.route.ts",
+        "LineNumber":  22,
+        "Line":  "router.delete(\"/:id\", deleteAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\chat.route.ts",
+        "LineNumber":  11,
+        "Line":  "router.post(\"/\", sendAdminChatMessage);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  18,
+        "Line":  "router.get(\"/stats\", getStats);       // must be before /:id"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  19,
+        "Line":  "router.get(\"/\",      listDoctors);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  20,
+        "Line":  "router.get(\"/:id\",   getDoctor);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  21,
+        "Line":  "router.post(\"/\",     createDoctor);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  22,
+        "Line":  "router.put(\"/:id\",   updateDoctor);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\doctor.route.ts",
+        "LineNumber":  23,
+        "Line":  "router.delete(\"/:id\", deleteDoctor);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  20,
+        "Line":  "router.get(\"/\", listHospitals);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  21,
+        "Line":  "router.get(\"/:id\", getHospital);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  22,
+        "Line":  "router.post(\"/\", createHospital);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  23,
+        "Line":  "router.put(\"/:id\", updateHospital);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  24,
+        "Line":  "router.patch(\"/:id/verify\", verifyHospital);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\hospital.route.ts",
+        "LineNumber":  25,
+        "Line":  "router.delete(\"/:id\", deleteHospital);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\overview.route.ts",
+        "LineNumber":  10,
+        "Line":  "router.get(\"/\", getOverviewStats);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.route.ts",
+        "LineNumber":  17,
+        "Line":  "router.get(\"/\", listUsers);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.route.ts",
+        "LineNumber":  18,
+        "Line":  "router.get(\"/:id\", getUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.route.ts",
+        "LineNumber":  19,
+        "Line":  "router.post(\"/\", createUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.route.ts",
+        "LineNumber":  20,
+        "Line":  "router.put(\"/:id\", updateUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.route.ts",
+        "LineNumber":  21,
+        "Line":  "router.delete(\"/:id\", deleteUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.routes.ts",
+        "LineNumber":  17,
+        "Line":  "router.get(\"/\", listUsers);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.routes.ts",
+        "LineNumber":  18,
+        "Line":  "router.get(\"/:id\", getUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.routes.ts",
+        "LineNumber":  19,
+        "Line":  "router.post(\"/\", createUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.routes.ts",
+        "LineNumber":  20,
+        "Line":  "router.put(\"/:id\", updateUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\admin\\user.routes.ts",
+        "LineNumber":  21,
+        "Line":  "router.delete(\"/:id\", deleteUser);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\appointment.route.ts",
+        "LineNumber":  8,
+        "Line":  "router.get(\"/\", listHospitalAppointments);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\appointment.route.ts",
+        "LineNumber":  9,
+        "Line":  "router.post(\"/\", createHospitalAppointment);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\appointment.route.ts",
+        "LineNumber":  10,
+        "Line":  "router.patch(\"/:id/status\", updateHospitalAppointmentStatus);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\auth.route.ts",
+        "LineNumber":  6,
+        "Line":  "router.post(\"/login\", hospitalLogin);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\dashboard.route.ts",
+        "LineNumber":  9,
+        "Line":  "router.get(\"/\", getHospitalDashboard);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\notification.route.ts",
+        "LineNumber":  8,
+        "Line":  "router.get(\"/\", listHospitalNotifications);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\notification.route.ts",
+        "LineNumber":  9,
+        "Line":  "router.patch(\"/read-all\", markAllHospitalNotificationsRead);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\notification.route.ts",
+        "LineNumber":  10,
+        "Line":  "router.patch(\"/:notificationId/read\", markHospitalNotificationRead);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\patient.route.ts",
+        "LineNumber":  9,
+        "Line":  "router.get(\"/\", listHospitalPatients);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\patient.route.ts",
+        "LineNumber":  10,
+        "Line":  "router.post(\"/\", createHospitalPatient);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\patient.route.ts",
+        "LineNumber":  11,
+        "Line":  "router.get(\"/:patientId\", getHospitalPatient);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\settings.route.ts",
+        "LineNumber":  8,
+        "Line":  "router.get(\"/\", getHospitalSettings);"
+    },
+    {
+        "Path":  "C:\\Users\\User\\Desktop\\mediconnect\\BACKEND\\src\\routes\\hospital\\settings.route.ts",
+        "LineNumber":  9,
+        "Line":  "router.patch(\"/\", updateHospitalSettings);"
+    }
+]
