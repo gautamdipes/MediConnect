@@ -5,14 +5,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * Only includes models listed by ListModels on current Gemini API keys.
  */
 export function geminiModelCandidates(): string[] {
-  const preferred = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
+  const preferred = process.env.GEMINI_MODEL || "gemini-1.5-flash";
   const fallbacks = [
     preferred,
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
     "gemini-flash-lite-latest",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
     "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
     "gemini-flash-latest",
   ];
   return [...new Set(fallbacks.filter(Boolean))];
