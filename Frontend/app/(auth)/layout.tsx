@@ -12,6 +12,7 @@ export default function AuthLayout({
 }) {
   const pathname = usePathname();
   const isSignup = pathname.includes("/signup") || pathname.includes("/register");
+  const isForgotPassword = pathname.includes("/forgot-password");
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-white text-[#091E42]">
@@ -57,30 +58,34 @@ export default function AuthLayout({
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-14 md:py-20">
-        <section className="grid w-full max-w-[960px] overflow-hidden rounded-2xl border border-[#0057d9]/12 bg-white/95 shadow-[0_24px_60px_rgba(7,20,40,0.14)] md:grid-cols-[1.05fr_0.95fr]">
-          <aside className="relative hidden flex-col justify-between overflow-hidden bg-[linear-gradient(165deg,#0057d9_0%,#003da1_55%,#071428_100%)] px-12 py-14 text-white md:flex">
-            <div>
-              <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#7eb6ff]">
-                MediConnect
-              </p>
-              <h1 className="mt-8 font-[family-name:var(--font-display)] text-[40px] font-medium leading-[1.1] tracking-[-0.02em]">
-                {isSignup ? "Start your care journey." : "Welcome back."}
-              </h1>
-              <p className="mt-5 max-w-[32ch] text-[15px] leading-[1.7] text-white/70">
-                {isSignup
-                  ? "Create an account to book appointments and keep your records close."
-                  : "Sign in to manage appointments, doctors, and medical records."}
-              </p>
-            </div>
+        <section className={`grid w-full overflow-hidden rounded-2xl border border-[#0057d9]/12 bg-white/95 shadow-[0_24px_60px_rgba(7,20,40,0.14)] ${
+          isForgotPassword ? "max-w-[480px] grid-cols-1" : "max-w-[960px] md:grid-cols-[1.05fr_0.95fr]"
+        }`}>
+          {!isForgotPassword && (
+            <aside className="relative hidden flex-col justify-between overflow-hidden bg-[linear-gradient(165deg,#0057d9_0%,#003da1_55%,#071428_100%)] px-12 py-14 text-white md:flex">
+              <div>
+                <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#7eb6ff]">
+                  MediConnect
+                </p>
+                <h1 className="mt-8 font-[family-name:var(--font-display)] text-[40px] font-medium leading-[1.1] tracking-[-0.02em]">
+                  {isSignup ? "Start your care journey." : "Welcome back."}
+                </h1>
+                <p className="mt-5 max-w-[32ch] text-[15px] leading-[1.7] text-white/70">
+                  {isSignup
+                    ? "Create an account to book appointments and keep your records close."
+                    : "Sign in to manage appointments, doctors, and medical records."}
+                </p>
+              </div>
 
-            <div className="flex flex-1 items-center justify-center py-6">
-              <AuthCareAnimation />
-            </div>
+              <div className="flex flex-1 items-center justify-center py-6">
+                <AuthCareAnimation />
+              </div>
 
-            <p className="text-[12px] text-white/40">
-              Secure patient access for hospitals and clinics.
-            </p>
-          </aside>
+              <p className="text-[12px] text-white/40">
+                Secure patient access for hospitals and clinics.
+              </p>
+            </aside>
+          )}
 
           <div className="flex items-center justify-center px-8 py-10 sm:px-12">{children}</div>
         </section>
