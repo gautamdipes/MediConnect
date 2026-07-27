@@ -43,7 +43,7 @@ export default function LoginForm({ staffOnly = false }: { staffOnly?: boolean }
 
     if (portalMode === "admin") {
       const adminCheck = await fetch(
-        `http://localhost:5000/api/v1/admin/users?page=1&limit=1`,
+        `/api/v1/admin/users?page=1&limit=1`,
         {
           headers: { Authorization: `Bearer ${result.token}` },
         }
